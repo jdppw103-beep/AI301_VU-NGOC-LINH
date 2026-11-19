@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ngọc Linh Data Studio · BI Data Cleansing & Analytics Workbench</title>
+<meta name="description" content="Ngọc Linh Data Studio - BI Data Cleansing & Analytics Workbench">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="/engine.js"></script>
+<script src="/vercel-adapter.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter', 'sans-serif'] },
+      colors: {
+        canvas: '#E9E9E6',
+        shell: '#F4F4F1',
+        card: '#FFFFFF',
+        soft: '#F1F1EE',
+        ink: '#141414',
+        muted: '#8A8A85',
+        olive: { 300: '#A7B38C', 500: '#7A8760', 700: '#56613F', 900: '#3C4430' },
+        amberx: '#B7791F',
+        redx: '#D64545'
+      },
+      borderRadius: { '4xl': '28px' }
+    }
+  }
+}
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+.hero-olive {
+  background:
+    radial-gradient(120% 90% at 85% 15%, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 55%),
+    radial-gradient(90% 80% at 10% 100%, rgba(40,48,28,.55) 0%, rgba(40,48,28,0) 60%),
+    linear-gradient(135deg, #8C9A6E 0%, #6E7B52 45%, #56613F 100%);
+}
+.glass { background: rgba(255,255,255,.14); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.22); }
+.fade-up { animation: fadeUp .55s cubic-bezier(.2,.8,.2,1) both; }
+.fade-up.d1 { animation-delay: .06s } .fade-up.d2 { animation-delay: .12s } .fade-up.d3 { animation-delay: .18s } .fade-up.d4 { animation-delay: .24s }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+.lift { transition: transform .25s ease, box-shadow .25s ease, background .2s ease; }
+.lift:hover { transform: translateY(-2px); box-shadow: 0 10px 30px -12px rgba(20,20,20,.18); }
+.draw { stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: draw 1.6s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes draw { to { stroke-dashoffset: 0 } }
+.pulse-dot { box-shadow: 0 0 0 0 rgba(250,214,80,.7); animation: pulse 2s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(250,214,80,.7) } 70% { box-shadow: 0 0 0 12px rgba(250,214,80,0) } 100% { box-shadow: 0 0 0 0 rgba(250,214,80,0) } }
+.bar-grow { transform-origin: bottom; animation: grow .8s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes grow { from { transform: scaleY(0) } to { transform: scaleY(1) } }
+.seg-grow { transform-origin: left; animation: segGrow .7s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes segGrow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+.rail-btn { transition: all .2s ease; }
+.rail-btn.active { background: #141414; color: #fff; }
+.side-item.active { background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.04); font-weight: 600; color: #141414; }
+.scroll-thin::-webkit-scrollbar { width: 6px; height: 6px }
+.scroll-thin::-webkit-scrollbar-thumb { background: #D6D6D1; border-radius: 9px }
+.toggle input { display: none }
+.toggle .track { transition: background .2s }
+.toggle .knob { transition: transform .2s }
+.toggle input:checked + .track { background: #141414 }
+.toggle input:checked + .track .knob { transform: translateX(14px) }
+.toast { animation: toastIn .35s cubic-bezier(.2,.8,.2,1) both }
+@keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(.98) } to { opacity: 1; transform: none } }
+.dz-active { background: rgba(255,255,255,.26) !important; transform: scale(1.01); }
+.shimmer { background: linear-gradient(90deg,#EEE 0%,#F7F7F5 50%,#EEE 100%); background-size: 200% 100%; animation: sh 1.2s infinite }
+@keyframes sh { to { background-position: -200% 0 } }
+@media print { aside, header .no-print, #toastWrap { display: none !important } body { background: #fff } }
+</style>
+</head>
+<body class="bg-canvas text-ink min-h-screen p-3 md:p-5">
+
+<div class="max-w-[1440px] mx-auto bg-shell rounded-4xl shadow-[0_30px_80px_-40px_rgba(0,0,0,.25)] flex min-h-[calc(100vh-40px)] overflow-hidden">
+
+  <!-- ============ ICON RAIL ============ -->
+  <aside class="w-[72px] flex-shrink-0 flex flex-col items-center py-5 border-r border-black/5">
+    <div class="w-11 h-11 rounded-2xl bg-ink text-white flex items-center justify-center shadow-md">
+      <i class="ph-fill ph-squares-four text-xl"></i>
+    </div>
+    <nav class="mt-auto mb-auto flex flex-col items-center gap-3 pt-12">
+      <button class="rail-btn active w-11 h-11 rounded-full flex items-center justify-center text-muted hover:text-ink" data-step="0" onclick="goToStep(0)" title="Trang chủ · Tổng quan BI"><i class="ph ph-house text-xl"></i></button>
+      <button class="rail-btn w-11 h-11 rounded-full flex items-center justify-center text-muted hover:text-ink" data-step="1" onclick="goToStep(1)" title="Bước 1 · Kết nối dữ liệu"><i class="ph ph-plugs-connected text-xl"></i></button>
+      <button class="rail-btn w-11 h-11 rounded-full flex items-center justify-center text-muted hover:text-ink" data-step="2" onclick="goToStep(2)" title="Bước 2 · Làm sạch dữ liệu"><i class="ph ph-broom text-xl"></i></button>
+      <button class="rail-btn w-11 h-11 rounded-full flex items-center justify-center text-muted hover:text-ink" data-step="3" onclick="goToStep(3)" title="Bước 3 · Phân tích dữ liệu"><i class="ph ph-chart-pie-slice text-xl"></i></button>
+      <button class="rail-btn w-11 h-11 rounded-full flex items-center justify-center text-muted hover:text-ink" data-step="4" onclick="goToStep(4)" title="Bước 4 · Xuất kết quả"><i class="ph ph-export text-xl"></i></button>
+      <button class="rail-btn relative w-11 h-11 rounded-full flex items-center justify-center text-muted hover:text-ink" onclick="goToStep(2)" title="Ngoại lệ cần xử lý">
+        <i class="ph ph-bell text-xl"></i>
+        <span id="railBadge" class="hidden absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-ink text-white text-[9px] font-bold flex items-center justify-center">0</span>
+      </button>
+    </nav>
+    <div class="flex flex-col items-center gap-3">
+      <button class="w-10 h-10 rounded-full text-muted hover:text-ink flex items-center justify-center" onclick="toast('Quy trình BI: Kết nối dữ liệu → Làm sạch → Phân tích → Xuất kết quả.')"><i class="ph ph-question text-xl"></i></button>
+      <button class="w-10 h-10 rounded-full text-muted hover:text-ink flex items-center justify-center" onclick="resetAll()" title="Làm mới phiên"><i class="ph ph-arrows-clockwise text-xl"></i></button>
+      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-olive-300 to-olive-700 text-white flex items-center justify-center text-lg"><i class="ph ph-user"></i></div>
+    </div>
+  </aside>
+
+  <!-- ============ SECONDARY SIDEBAR ============ -->
+  <aside class="w-[244px] flex-shrink-0 hidden lg:flex flex-col px-4 py-6 border-r border-black/5">
+    <div class="px-2 mb-5">
+      <div class="text-[15px] font-extrabold tracking-tight leading-snug">Ngọc Linh Data Studio</div>
+      <div class="text-[10.5px] text-muted mt-0.5">BI Data Cleansing &amp; Analytics Workbench</div>
+    </div>
+
+    <div class="text-[11px] font-semibold uppercase tracking-wider text-muted px-2 mb-2">Quy trình xử lý BI</div>
+    <div class="space-y-1" id="sideSteps">
+      <button class="side-item active w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] text-neutral-600 hover:bg-white/70 transition" data-step="0" onclick="goToStep(0)">
+        <i class="ph ph-house text-base flex-shrink-0"></i>
+        <span class="flex-1 text-left">
+          <span class="block leading-tight">Trang chủ</span>
+          <span class="block text-[10.5px] font-normal text-muted">Giới thiệu &amp; tổng quan</span>
+        </span>
+      </button>
+      <button class="side-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] text-neutral-600 hover:bg-white/70 transition" data-step="1" onclick="goToStep(1)">
+        <span class="w-5 h-5 rounded-full bg-soft text-[11px] font-bold flex items-center justify-center flex-shrink-0">1</span>
+        <span class="flex-1 text-left">
+          <span class="block leading-tight">Kết nối dữ liệu</span>
+          <span class="block text-[10.5px] font-normal text-muted">Tải lên &amp; quản lý tệp</span>
+        </span>
+        <i class="ph-fill ph-check-circle text-olive-500 hidden flex-shrink-0" data-check="1"></i>
+      </button>
+      <button class="side-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] text-neutral-600 hover:bg-white/70 transition" data-step="2" onclick="goToStep(2)">
+        <span class="w-5 h-5 rounded-full bg-soft text-[11px] font-bold flex items-center justify-center flex-shrink-0">2</span>
+        <span class="flex-1 text-left">
+          <span class="block leading-tight">Làm sạch dữ liệu</span>
+          <span class="block text-[10.5px] font-normal text-muted">Chuẩn hóa &amp; kiểm duyệt</span>
+        </span>
+        <i class="ph-fill ph-check-circle text-olive-500 hidden flex-shrink-0" data-check="2"></i>
+      </button>
+      <button class="side-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] text-neutral-600 hover:bg-white/70 transition" data-step="3" onclick="goToStep(3)">
+        <span class="w-5 h-5 rounded-full bg-soft text-[11px] font-bold flex items-center justify-center flex-shrink-0">3</span>
+        <span class="flex-1 text-left">
+          <span class="block leading-tight">Phân tích dữ liệu</span>
+          <span class="block text-[10.5px] font-normal text-muted">Insight &amp; đánh giá</span>
+        </span>
+        <i class="ph-fill ph-check-circle text-olive-500 hidden flex-shrink-0" data-check="3"></i>
+      </button>
+      <button class="side-item w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] text-neutral-600 hover:bg-white/70 transition" data-step="4" onclick="goToStep(4)">
+        <span class="w-5 h-5 rounded-full bg-soft text-[11px] font-bold flex items-center justify-center flex-shrink-0">4</span>
+        <span class="flex-1 text-left">
+          <span class="block leading-tight">Xuất kết quả</span>
+          <span class="block text-[10.5px] font-normal text-muted">Tạo báo cáo &amp; tải tệp</span>
+        </span>
+      </button>
+    </div>
+
+    <!-- Cổng con người duyệt -->
+    <div class="mt-6 bg-white rounded-2xl p-3.5 shadow-sm space-y-2.5">
+      <div class="text-[11px] font-semibold uppercase tracking-wider text-muted">Cổng con người duyệt</div>
+      <div class="flex items-center justify-between text-[12px]">
+        <span class="text-neutral-600">Kiểm duyệt dữ liệu</span>
+        <span id="gateVerifyPill" class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-soft text-muted">Chờ duyệt</span>
+      </div>
+      <div class="flex items-center justify-between text-[12px]">
+        <span class="text-neutral-600">Đánh giá kết quả</span>
+        <span id="gateEvalPill" class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-soft text-muted">Chờ đánh giá</span>
+      </div>
+    </div>
+
+    <div class="mt-5 px-2 flex items-center justify-between">
+      <span class="text-[12.5px] font-semibold">Nguồn dữ liệu</span>
+      <button id="btnResetSide" class="text-[12px] text-muted hover:text-redx hidden" onclick="resetAll()">Xoá</button>
+    </div>
+    <div class="mt-2.5 px-2 space-y-2.5">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-sm"><i class="ph ph-file-xls text-lg text-olive-700"></i></div>
+        <div class="min-w-0">
+          <div class="text-[12.5px] font-medium truncate" id="sideSource">Chưa có tệp</div>
+          <div class="text-[11px] text-muted" id="sideSourceMeta">Chờ tải dữ liệu</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-auto bg-white rounded-2xl p-4 shadow-sm">
+      <div class="text-[13px] font-semibold" id="sideCardTitle">Tổng quan BI</div>
+      <p class="text-[11.5px] text-muted mt-1 leading-relaxed" id="sideCardText">Theo dõi KPI, khuyến nghị và xuất báo cáo từ dữ liệu đã xử lý.</p>
+      <div class="mt-3 h-1.5 bg-soft rounded-full overflow-hidden"><div id="sideProgress" class="h-full bg-ink rounded-full transition-all duration-700" style="width:0%"></div></div>
+      <button onclick="nextStep()" class="mt-3 inline-flex items-center gap-1.5 bg-ink text-white text-[12px] font-medium px-4 py-2 rounded-full hover:bg-neutral-800 transition">
+        Tiếp tục <i class="ph ph-arrow-up-right"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="flex-1 min-w-0 px-5 md:px-7 py-6 overflow-y-auto scroll-thin">
+
+    <!-- A. Khu vực chào mừng (Header chung) -->
+    <header class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 class="text-[26px] font-bold tracking-tight" id="greeting">Chào buổi sáng, Chuyên viên phân tích</h1>
+        <p class="text-[13px] text-muted mt-0.5" id="subGreeting">—</p>
+      </div>
+      <div class="flex items-center gap-2 no-print">
+        <div class="relative hidden md:block">
+          <i class="ph ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"></i>
+          <input id="searchBox" oninput="filterTables(this.value)" class="w-72 bg-white/80 focus:bg-white rounded-full pl-10 pr-4 py-2.5 text-[12.5px] outline-none focus:ring-2 focus:ring-ink/10 transition" placeholder="Tìm mã đơn, sản phẩm hoặc chi nhánh…">
+        </div>
+        <button class="relative w-10 h-10 rounded-full bg-white/80 hover:bg-white flex items-center justify-center transition" onclick="goToStep(2)" title="Kiểm tra ngoại lệ">
+          <i class="ph ph-bell text-lg"></i>
+          <span id="bellBadge" class="hidden absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-ink text-white text-[9px] font-bold flex items-center justify-center">0</span>
+        </button>
+        <button onclick="downloadTemplateCSV()" class="bg-white/80 hover:bg-white rounded-full px-4 py-2.5 text-[12.5px] font-medium transition flex items-center gap-1.5"><i class="ph ph-file-arrow-down"></i> Tệp template</button>
+      </div>
+    </header>
+
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.json" class="hidden" onchange="handleFileUpload(event)">
+
+    <!-- =============== VIEW 0: TRANG CHỦ NGỌC LINH DATA STUDIO =============== -->
+    <section id="view0" class="view mt-6 space-y-5">
+
+      <!-- A. Phần chào mừng và giới thiệu -->
+      <div class="bg-card rounded-4xl p-6 md:p-7 fade-up">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div class="max-w-3xl">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-soft text-[11.5px] font-semibold text-olive-700">
+              <i class="ph-fill ph-sparkle"></i> BI Data Cleansing &amp; Analytics Workbench
+            </span>
+            <h2 class="text-[28px] md:text-[34px] font-bold tracking-tight mt-3 leading-tight">Chào mừng đến với Ngọc Linh Data Studio</h2>
+            <p class="text-[15px] font-medium text-neutral-700 mt-1.5">Nền tảng làm sạch, phân tích dữ liệu và hỗ trợ ra quyết định kinh doanh.</p>
+            <p class="text-[13px] text-muted mt-2.5 leading-relaxed">
+              Ngọc Linh Data Studio là không gian làm việc BI hỗ trợ doanh nghiệp chuyển đổi dữ liệu thô thành thông tin có giá trị. Hệ thống giúp tự động hóa quá trình kết nối dữ liệu, phát hiện và xử lý sai lệch, phân tích hiệu quả kinh doanh, đồng thời tạo báo cáo trực quan phục vụ quá trình ra quyết định.
+            </p>
+            <div class="mt-5 flex flex-wrap items-center gap-2.5">
+              <button onclick="goToStep(1)" class="bg-ink text-white hover:bg-neutral-800 rounded-full px-5 py-2.5 text-[12.5px] font-semibold flex items-center gap-2 transition">
+                Bắt đầu phân tích <i class="ph ph-arrow-right"></i>
+              </button>
+              <button onclick="document.getElementById('homeProcessSection').scrollIntoView({ behavior: 'smooth' })" class="bg-soft hover:bg-neutral-200 text-ink rounded-full px-5 py-2.5 text-[12.5px] font-medium flex items-center gap-2 transition">
+                <i class="ph ph-list-numbers"></i> Tìm hiểu quy trình
+              </button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5 lg:w-[300px] flex-shrink-0">
+            <div class="bg-soft rounded-2xl p-3.5">
+              <div class="text-[11px] text-muted">Bước 1 · Đầu vào</div>
+              <div class="text-[13px] font-semibold mt-0.5">Excel &amp; CSV</div>
+            </div>
+            <div class="bg-soft rounded-2xl p-3.5">
+              <div class="text-[11px] text-muted">Bước 2 · Chuẩn hóa</div>
+              <div class="text-[13px] font-semibold mt-0.5">Khử trùng &amp; Duyệt</div>
+            </div>
+            <div class="bg-soft rounded-2xl p-3.5">
+              <div class="text-[11px] text-muted">Bước 3 · BI</div>
+              <div class="text-[13px] font-semibold mt-0.5">KPI &amp; Insight</div>
+            </div>
+            <div class="bg-soft rounded-2xl p-3.5">
+              <div class="text-[11px] text-muted">Bước 4 · Đầu ra</div>
+              <div class="text-[13px] font-semibold mt-0.5">CSV, Excel, PDF</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- C. Khu vực giới thiệu 4 bước quy trình BI -->
+      <div id="homeProcessSection" class="bg-card rounded-4xl p-5 md:p-6 fade-up d1">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 class="text-[16px] font-bold tracking-tight">Quy trình BI 4 bước tại Ngọc Linh Data Studio</h3>
+            <p class="text-[12px] text-muted">Từ dữ liệu thô đến báo cáo điều hành và khuyến nghị ra quyết định</p>
+          </div>
+          <button onclick="goToStep(1)" class="bg-soft hover:bg-ink hover:text-white rounded-full px-4 py-2 text-[12px] font-medium transition">Bắt đầu từ Bước 1</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <!-- Bước 1 -->
+          <div class="lift bg-soft rounded-3xl p-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-olive-700"><i class="ph-bold ph-plugs-connected text-xl"></i></span>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-olive-700">Bước 1</span>
+              </div>
+              <h4 class="text-[14.5px] font-bold mt-3">Kết nối dữ liệu</h4>
+              <p class="text-[12px] text-neutral-600 mt-1.5 leading-relaxed">Kết nối và nhập dữ liệu từ Excel, CSV hoặc các nguồn dữ liệu doanh nghiệp. Hệ thống tiếp nhận và kiểm tra cấu trúc dữ liệu đầu vào.</p>
+              <ul class="mt-3 space-y-1 text-[11.5px] text-muted">
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Tải lên dữ liệu</li>
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Quản lý tệp dữ liệu</li>
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Kiểm tra cấu trúc và định dạng</li>
+              </ul>
+            </div>
+            <button onclick="goToStep(1)" class="mt-4 w-full bg-white hover:bg-ink hover:text-white rounded-full py-2 text-[12px] font-semibold flex items-center justify-center gap-1.5 transition">Truy cập <i class="ph ph-arrow-up-right"></i></button>
+          </div>
+
+          <!-- Bước 2 -->
+          <div class="lift bg-soft rounded-3xl p-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-olive-700"><i class="ph-bold ph-broom text-xl"></i></span>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-olive-700">Bước 2</span>
+              </div>
+              <h4 class="text-[14.5px] font-bold mt-3">Làm sạch dữ liệu</h4>
+              <p class="text-[12px] text-neutral-600 mt-1.5 leading-relaxed">Phát hiện dữ liệu trùng lặp, đơn hàng hủy, hoàn trả, dữ liệu thiếu và các sai lệch. Chuẩn hóa dữ liệu trước khi đưa vào phân tích.</p>
+              <ul class="mt-3 space-y-1 text-[11.5px] text-muted">
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Phát hiện trùng lặp</li>
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Xử lý đơn hàng hủy và hoàn trả</li>
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Chuẩn hóa dữ liệu</li>
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Kiểm duyệt và phê duyệt dữ liệu</li>
+              </ul>
+            </div>
+            <button onclick="goToStep(2)" class="mt-4 w-full bg-white hover:bg-ink hover:text-white rounded-full py-2 text-[12px] font-semibold flex items-center justify-center gap-1.5 transition">Truy cập <i class="ph ph-arrow-up-right"></i></button>
+          </div>
+
+          <!-- Bước 3 -->
+          <div class="lift bg-soft rounded-3xl p-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-olive-700"><i class="ph-bold ph-chart-pie-slice text-xl"></i></span>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-olive-700">Bước 3</span>
+              </div>
+              <h4 class="text-[14.5px] font-bold mt-3">Phân tích dữ liệu</h4>
+              <p class="text-[12px] text-neutral-600 mt-1.5 leading-relaxed">Khai thác dữ liệu đã làm sạch để đánh giá hiệu quả kinh doanh, phát hiện xu hướng và xác định các vấn đề cần cải thiện.</p>
+              <ul class="mt-3 space-y-1 text-[11.5px] text-muted">
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Phân tích doanh thu và lợi nhuận</li>
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Phân tích sản phẩm và chi nhánh</li>
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Đánh giá hiệu quả bán hàng</li>
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Tạo Insight và khuyến nghị</li>
+              </ul>
+            </div>
+            <button onclick="goToStep(3)" class="mt-4 w-full bg-white hover:bg-ink hover:text-white rounded-full py-2 text-[12px] font-semibold flex items-center justify-center gap-1.5 transition">Truy cập <i class="ph ph-arrow-up-right"></i></button>
+          </div>
+
+          <!-- Bước 4 -->
+          <div class="lift bg-soft rounded-3xl p-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-olive-700"><i class="ph-bold ph-export text-xl"></i></span>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-olive-700">Bước 4</span>
+              </div>
+              <h4 class="text-[14.5px] font-bold mt-3">Xuất kết quả</h4>
+              <p class="text-[12px] text-neutral-600 mt-1.5 leading-relaxed">Tổng hợp kết quả phân tích thành báo cáo trực quan, dữ liệu sạch và các tài liệu hỗ trợ nhà quản trị ra quyết định.</p>
+              <ul class="mt-3 space-y-1 text-[11.5px] text-muted">
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Xuất dữ liệu Excel/CSV</li>
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Xuất báo cáo PDF</li>
+                <li class="flex items-center gap-1.5"><i class="ph-fill ph-check-circle text-olive-500"></i> Xuất tóm tắt JSON</li>
+              </ul>
+            </div>
+            <button onclick="goToStep(4)" class="mt-4 w-full bg-white hover:bg-ink hover:text-white rounded-full py-2 text-[12px] font-semibold flex items-center justify-center gap-1.5 transition">Truy cập <i class="ph ph-arrow-up-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- E. Khu vực lợi ích hệ thống -->
+      <div class="bg-card rounded-4xl p-5 md:p-6 fade-up d3">
+        <div class="mb-4">
+          <h3 class="text-[16px] font-bold tracking-tight">Giá trị Ngọc Linh Data Studio mang lại</h3>
+          <p class="text-[12px] text-muted">Chuẩn hóa vận hành dữ liệu và nâng cao năng lực phân tích doanh nghiệp</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div class="bg-soft rounded-2xl p-4">
+            <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-olive-700"><i class="ph-bold ph-checks text-lg"></i></div>
+            <div class="text-[13.5px] font-semibold mt-3">1. Chuẩn hóa dữ liệu</div>
+            <p class="text-[12px] text-muted mt-1 leading-relaxed">Hạn chế sai lệch và nâng cao chất lượng dữ liệu đầu vào.</p>
+          </div>
+          <div class="bg-soft rounded-2xl p-4">
+            <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-olive-700"><i class="ph-bold ph-clock-countdown text-lg"></i></div>
+            <div class="text-[13.5px] font-semibold mt-3">2. Tiết kiệm thời gian</div>
+            <p class="text-[12px] text-muted mt-1 leading-relaxed">Tự động hóa các thao tác làm sạch và xử lý dữ liệu.</p>
+          </div>
+          <div class="bg-soft rounded-2xl p-4">
+            <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-olive-700"><i class="ph-bold ph-chart-line-up text-lg"></i></div>
+            <div class="text-[13.5px] font-semibold mt-3">3. Phân tích chuyên sâu</div>
+            <p class="text-[12px] text-muted mt-1 leading-relaxed">Khai thác các chỉ số quan trọng để đánh giá hoạt động kinh doanh.</p>
+          </div>
+          <div class="bg-soft rounded-2xl p-4">
+            <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center text-olive-700"><i class="ph-bold ph-compass text-lg"></i></div>
+            <div class="text-[13.5px] font-semibold mt-3">4. Hỗ trợ quyết định</div>
+            <p class="text-[12px] text-muted mt-1 leading-relaxed">Cung cấp Insight và khuyến nghị dựa trên dữ liệu thực tế.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- F. Khu vực bắt đầu sử dụng -->
+      <div class="hero-olive rounded-4xl p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-4 fade-up d3">
+        <div>
+          <h3 class="text-[20px] font-bold tracking-tight">Sẵn sàng biến dữ liệu thành giá trị kinh doanh?</h3>
+          <p class="text-[13px] text-white/80 mt-1">Bắt đầu quy trình BI ngay hôm nay để làm sạch dữ liệu, khám phá Insight và nâng cao hiệu quả ra quyết định.</p>
+        </div>
+        <button onclick="goToStep(1)" class="bg-white text-ink rounded-full px-6 py-3 text-[13px] font-semibold flex items-center gap-2 flex-shrink-0 hover:scale-[1.02] transition">
+          Bắt đầu ngay <i class="ph ph-arrow-right"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- =============== STEP 1: KẾT NỐI DỮ LIỆU =============== -->
+    <section id="view1" class="view mt-6 space-y-5 hidden">
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <!-- Hero -->
+        <div class="xl:col-span-7 hero-olive rounded-4xl p-6 text-white relative overflow-hidden fade-up">
+          <div class="flex items-center justify-between">
+            <span class="text-[13px] text-white/80">Bước 1 · Kết nối & Kiểm tra cấu trúc dữ liệu</span>
+            <button onclick="triggerAddFile()" class="glass rounded-full px-3.5 py-1.5 text-[12px] flex items-center gap-1.5 hover:bg-white/25 transition"><i class="ph ph-upload-simple"></i> Thêm tệp</button>
+          </div>
+          <div class="mt-3 flex flex-wrap items-center gap-4">
+            <div class="text-[44px] md:text-[50px] font-bold tracking-tight leading-none"><span id="heroRawValue">0</span><span class="text-2xl font-semibold ml-1 text-white/80">đ</span></div>
+            <div class="flex flex-col gap-1.5">
+              <span class="glass rounded-full px-3 py-1 text-[11.5px] flex items-center gap-1"><i class="ph ph-files"></i> <b id="chipFiles">0</b>&nbsp;tệp · <b id="chipRecords">0</b>&nbsp;bản ghi</span>
+              <span class="glass rounded-full px-3 py-1 text-[11.5px] flex items-center gap-1"><i class="ph ph-storefront"></i> <b id="chipStores">0</b>&nbsp;chi nhánh · <b id="chipSkus">0</b>&nbsp;SKU</span>
+            </div>
+          </div>
+
+          <!-- Dropzone -->
+          <div id="dropZone" onclick="triggerAddFile()"
+               class="mt-6 glass rounded-3xl border-dashed border-2 border-white/35 p-6 flex flex-col md:flex-row items-center gap-4 cursor-pointer transition-all duration-300 hover:bg-white/20">
+            <div class="w-14 h-14 rounded-2xl bg-white/90 text-olive-700 flex items-center justify-center shadow-lg"><i class="ph-bold ph-cloud-arrow-up text-2xl"></i></div>
+            <div class="flex-1 text-center md:text-left">
+              <div class="text-[14px] font-semibold">Kéo thả tệp Excel (.xlsx, .xls) hoặc CSV vào đây</div>
+              <div class="text-[12px] text-white/75 mt-0.5">Tự kiểm tra định dạng & cấu trúc cột: Mã đơn, Ngày, Chi nhánh, Sản phẩm, SL, Đơn giá, Giá vốn, Trạng thái</div>
+            </div>
+            <span class="bg-white text-ink rounded-full px-4 py-2 text-[12px] font-semibold flex items-center gap-1.5">Chọn tệp <i class="ph ph-arrow-up-right"></i></span>
+          </div>
+
+          <div class="mt-6 pt-5 border-t border-white/20 grid grid-cols-3 gap-4">
+            <div><div class="text-[12px] text-white/70">Đơn trùng phát hiện</div><div class="text-[20px] font-bold mt-0.5" id="heroDup">0</div></div>
+            <div><div class="text-[12px] text-white/70">Đơn hủy / lỗi</div><div class="text-[20px] font-bold mt-0.5" id="heroCancel">0</div></div>
+            <div><div class="text-[12px] text-white/70">Thiếu / sai định dạng</div><div class="text-[20px] font-bold mt-0.5" id="heroMissing">0</div></div>
+          </div>
+        </div>
+
+        <!-- Danh sách file đã tải lên -->
+        <div class="xl:col-span-5 bg-card rounded-4xl p-5 flex flex-col fade-up d1">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-[15px] font-semibold">Tệp dữ liệu đã tải lên</h3>
+              <p class="text-[11.5px] text-muted">Thêm, thay thế hoặc xóa tệp đầu vào</p>
+            </div>
+            <button onclick="triggerAddFile()" class="bg-soft hover:bg-ink hover:text-white rounded-full px-3 py-1.5 text-[11.5px] font-medium transition flex items-center gap-1"><i class="ph ph-plus"></i> Thêm</button>
+          </div>
+          <div class="mt-4 space-y-2.5 flex-1 max-h-[300px] overflow-y-auto scroll-thin" id="uploadedFileList"></div>
+        </div>
+      </div>
+
+      <!-- Raw table -->
+      <div class="bg-card rounded-4xl p-5 fade-up d2">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="text-[15px] font-semibold">Xem trước dữ liệu đầu vào</h3>
+            <p class="text-[12px] text-muted">Hiển thị tối đa 50 dòng đầu tiên sau khi ghép từ các tệp đã tải lên</p>
+          </div>
+          <button onclick="goToStep(2)" class="bg-ink text-white rounded-full px-4 py-2 text-[12px] font-medium flex items-center gap-1.5 hover:bg-neutral-800 transition">Sang bước Làm sạch <i class="ph ph-arrow-right"></i></button>
+        </div>
+        <div class="overflow-x-auto max-h-[360px] scroll-thin">
+          <table class="w-full text-[12.5px]">
+            <thead class="sticky top-0 bg-card">
+              <tr class="text-muted text-left border-b border-black/5">
+                <th class="py-2.5 pr-3 font-medium">Mã đơn</th><th class="py-2.5 pr-3 font-medium">Chi nhánh</th><th class="py-2.5 pr-3 font-medium">Sản phẩm</th>
+                <th class="py-2.5 pr-3 font-medium text-center">SL</th><th class="py-2.5 pr-3 font-medium text-right">Đơn giá</th><th class="py-2.5 pr-3 font-medium text-right">Chiết khấu</th>
+                <th class="py-2.5 pr-3 font-medium">Trạng thái</th><th class="py-2.5 font-medium">Kênh</th>
+              </tr>
+            </thead>
+            <tbody id="rawTableBody" class="searchable"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =============== STEP 2: LÀM SẠCH DỮ LIỆU =============== -->
+    <section id="view2" class="view mt-6 space-y-5 hidden">
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <div class="xl:col-span-8 hero-olive rounded-4xl p-6 text-white fade-up">
+          <div class="flex items-center justify-between">
+            <span class="text-[13px] text-white/80">Bước 2 · Sai lệch doanh thu đã ngăn chặn</span>
+            <button id="btnStartClean" onclick="executeDataCleaning()" class="bg-white text-ink rounded-full px-4 py-2 text-[12px] font-semibold flex items-center gap-1.5 hover:scale-[1.03] transition"><i class="ph-bold ph-sparkle"></i> Chạy làm sạch dữ liệu</button>
+          </div>
+          <div class="mt-3 flex flex-wrap items-center gap-4">
+            <div class="text-[46px] md:text-[54px] font-bold tracking-tight leading-none"><span id="cleanPrevented">0</span><span class="text-2xl font-semibold ml-1 text-white/80">đ</span></div>
+            <div class="flex flex-col gap-1.5">
+              <span class="glass rounded-full px-3 py-1 text-[11.5px]"><b id="cleanRawN">0</b> dòng thô → <b id="cleanCleanN">0</b> dòng sạch</span>
+              <span class="glass rounded-full px-3 py-1 text-[11.5px]" id="cleanRatio">Tỷ lệ giữ lại —</span>
+            </div>
+          </div>
+
+          <div class="mt-6 grid grid-cols-2 md:grid-cols-5 gap-2.5">
+            <label class="toggle glass rounded-2xl p-3 flex items-center justify-between gap-2 cursor-pointer hover:bg-white/20 transition">
+              <span class="text-[11.5px] leading-tight">Khử trùng lặp</span>
+              <input type="checkbox" id="chkDeduplicate" checked><span class="track w-8 h-[18px] rounded-full bg-white/30 p-0.5 flex-shrink-0"><span class="knob block w-3.5 h-3.5 rounded-full bg-white"></span></span>
+            </label>
+            <label class="toggle glass rounded-2xl p-3 flex items-center justify-between gap-2 cursor-pointer hover:bg-white/20 transition">
+              <span class="text-[11.5px] leading-tight">Loại đơn hủy</span>
+              <input type="checkbox" id="chkCancelled" checked><span class="track w-8 h-[18px] rounded-full bg-white/30 p-0.5 flex-shrink-0"><span class="knob block w-3.5 h-3.5 rounded-full bg-white"></span></span>
+            </label>
+            <label class="toggle glass rounded-2xl p-3 flex items-center justify-between gap-2 cursor-pointer hover:bg-white/20 transition">
+              <span class="text-[11.5px] leading-tight">Đối soát hoàn</span>
+              <input type="checkbox" id="chkReturns" checked><span class="track w-8 h-[18px] rounded-full bg-white/30 p-0.5 flex-shrink-0"><span class="knob block w-3.5 h-3.5 rounded-full bg-white"></span></span>
+            </label>
+            <label class="toggle glass rounded-2xl p-3 flex items-center justify-between gap-2 cursor-pointer hover:bg-white/20 transition">
+              <span class="text-[11.5px] leading-tight">Chuẩn hóa chữ</span>
+              <input type="checkbox" id="chkNormalize" checked><span class="track w-8 h-[18px] rounded-full bg-white/30 p-0.5 flex-shrink-0"><span class="knob block w-3.5 h-3.5 rounded-full bg-white"></span></span>
+            </label>
+            <label class="toggle glass rounded-2xl p-3 flex items-center justify-between gap-2 cursor-pointer hover:bg-white/20 transition">
+              <span class="text-[11.5px] leading-tight">Nội suy giá vốn</span>
+              <input type="checkbox" id="chkImputeCogs" checked><span class="track w-8 h-[18px] rounded-full bg-white/30 p-0.5 flex-shrink-0"><span class="knob block w-3.5 h-3.5 rounded-full bg-white"></span></span>
+            </label>
+          </div>
+
+          <div class="mt-6 pt-5 border-t border-white/20 grid grid-cols-4 gap-4">
+            <div><div class="text-[12px] text-white/70">Trùng lặp</div><div class="text-[20px] font-bold mt-0.5" id="cleanDup">0</div></div>
+            <div><div class="text-[12px] text-white/70">Đơn hủy / lỗi</div><div class="text-[20px] font-bold mt-0.5" id="cleanCancel">0</div></div>
+            <div><div class="text-[12px] text-white/70">Đơn hoàn trả</div><div class="text-[20px] font-bold mt-0.5" id="cleanReturn">0</div></div>
+            <div><div class="text-[12px] text-white/70">Thiếu / sai ĐD</div><div class="text-[20px] font-bold mt-0.5" id="cleanMissing">0</div></div>
+          </div>
+        </div>
+
+        <!-- Human gate -->
+        <div class="xl:col-span-4 bg-card rounded-4xl p-5 flex flex-col fade-up d1">
+          <div class="flex items-center justify-between">
+            <h3 class="text-[15px] font-semibold">Phê duyệt dữ liệu sạch</h3>
+            <span id="gateStatus" class="text-[11px] font-medium px-2.5 py-1 rounded-full bg-soft text-muted">Chờ làm sạch</span>
+          </div>
+          <div class="mt-4 bg-soft rounded-2xl p-4 flex gap-3">
+            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center flex-shrink-0"><i class="ph ph-shield-check text-xl text-olive-700"></i></div>
+            <div>
+              <div class="text-[11.5px] font-medium text-amberx">Cổng kiểm duyệt con người</div>
+              <div class="text-[13.5px] font-semibold mt-0.5">Xác nhận trước khi phân tích</div>
+              <div class="text-[12px] text-muted mt-0.5 leading-relaxed">Kiểm tra các bản ghi ngoại lệ bên dưới, chỉnh sửa nếu cần rồi nhấn Phê duyệt.</div>
+            </div>
+          </div>
+          <div class="mt-4 space-y-2 text-[12.5px]" id="gateChecklist">
+            <div class="flex items-center gap-2 text-muted"><i class="ph ph-circle"></i> Đã chạy làm sạch dữ liệu</div>
+            <div class="flex items-center gap-2 text-muted"><i class="ph ph-circle"></i> Đã rà soát bản ghi ngoại lệ</div>
+            <div class="flex items-center gap-2 text-muted"><i class="ph ph-circle"></i> Chuyên viên phê duyệt</div>
+          </div>
+          <div class="mt-auto pt-5 flex gap-2">
+            <button onclick="verifyCleaning(false)" class="flex-1 rounded-full border border-black/10 py-2.5 text-[12.5px] font-medium hover:bg-soft transition">Từ chối</button>
+            <button id="btnApprove" onclick="verifyCleaning(true)" disabled class="flex-1 rounded-full bg-ink text-white py-2.5 text-[12.5px] font-medium flex items-center justify-center gap-1.5 hover:bg-neutral-800 transition disabled:opacity-30 disabled:cursor-not-allowed">Phê duyệt <i class="ph ph-arrow-up-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bản ghi ngoại lệ chỉnh sửa trực tiếp -->
+      <div class="bg-card rounded-4xl p-5 fade-up d2">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h3 class="text-[15px] font-semibold">Bản ghi ngoại lệ & Chỉnh sửa trực tiếp <span class="text-muted font-normal text-[13px]">· <span id="exceptionCountBadge">0</span> ngoại lệ</span></h3>
+            <p class="text-[12px] text-muted">Sửa trực tiếp các dòng thiếu thông tin, sai định dạng hoặc kiểm tra các dòng bị loại</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto max-h-[300px] scroll-thin">
+          <table class="w-full text-[12.5px]">
+            <thead class="sticky top-0 bg-card">
+              <tr class="text-muted text-left border-b border-black/5">
+                <th class="py-2.5 pr-3 font-medium">Loại ngoại lệ</th>
+                <th class="py-2.5 pr-3 font-medium">Mã đơn</th>
+                <th class="py-2.5 pr-3 font-medium">Sản phẩm</th>
+                <th class="py-2.5 pr-3 font-medium text-center">SL</th>
+                <th class="py-2.5 pr-3 font-medium text-right">Đơn giá</th>
+                <th class="py-2.5 pr-3 font-medium">Trạng thái</th>
+                <th class="py-2.5 pr-3 font-medium">Lý do</th>
+                <th class="py-2.5 font-medium text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="exceptionsTableBody" class="searchable">
+              <tr><td colspan="8" class="py-8 text-center text-muted text-[12.5px]">Chưa có dữ liệu ngoại lệ. Hãy chạy làm sạch dữ liệu.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <div class="xl:col-span-7 bg-card rounded-4xl p-5 fade-up d2">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-[15px] font-semibold">Dữ liệu sạch <span class="text-muted font-normal text-[13px]">· <span id="cleanedCountBadge">0</span> bản ghi</span></h3>
+            <span class="text-[11.5px] text-muted">Đã chuẩn hóa ngày, số liệu & giá vốn</span>
+          </div>
+          <div class="overflow-x-auto max-h-[360px] scroll-thin">
+            <table class="w-full text-[12.5px]">
+              <thead class="sticky top-0 bg-card">
+                <tr class="text-muted text-left border-b border-black/5">
+                  <th class="py-2.5 pr-3 font-medium">Mã đơn</th><th class="py-2.5 pr-3 font-medium">Sản phẩm</th>
+                  <th class="py-2.5 pr-3 font-medium text-right">DT thuần</th><th class="py-2.5 pr-3 font-medium text-right">Giá vốn</th><th class="py-2.5 pr-3 font-medium text-right">LN gộp</th><th class="py-2.5 font-medium">Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody id="cleanedTableBody" class="searchable">
+                <tr><td colspan="6" class="py-10 text-center text-muted text-[12.5px]">Bấm <b>“Chạy làm sạch dữ liệu”</b> để bắt đầu.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="xl:col-span-5 bg-[#1A1B17] text-neutral-300 rounded-4xl p-5 fade-up d3">
+          <div class="flex items-center justify-between pb-3 border-b border-white/10">
+            <span class="text-[13px] font-semibold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#C9D79E]"></span> Nhật ký làm sạch</span>
+            <span class="text-[11px] text-neutral-500 font-mono" id="cleanLogTime">sẵn sàng</span>
+          </div>
+          <div id="cleanLogsTerminal" class="mt-3 font-mono text-[11.5px] space-y-2 max-h-[310px] overflow-y-auto scroll-thin pr-1 leading-relaxed">
+            <div class="text-neutral-500">// Đang chờ lệnh làm sạch…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =============== STEP 3: PHÂN TÍCH DỮ LIỆU =============== -->
+    <section id="view3" class="view mt-6 space-y-5 hidden">
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <div class="xl:col-span-8 hero-olive rounded-4xl p-6 text-white fade-up">
+          <div class="flex items-center justify-between">
+            <span class="text-[13px] text-white/80">Bước 3 · Tăng trưởng doanh thu thuần theo thời gian</span>
+            <div class="flex items-center gap-2">
+              <button id="btnEvaluateResult" onclick="evaluateAnalysis(true)" class="bg-white text-ink rounded-full px-3.5 py-1.5 text-[12px] font-semibold flex items-center gap-1.5 hover:scale-[1.03] transition"><i class="ph-bold ph-seal-check"></i> Đánh giá kết quả</button>
+              <button onclick="goToStep(4)" class="glass rounded-full px-3.5 py-1.5 text-[12px] flex items-center gap-1.5 hover:bg-white/25 transition"><i class="ph ph-arrow-up-right"></i> Xuất kết quả</button>
+            </div>
+          </div>
+          <div class="mt-3 flex flex-wrap items-center gap-4">
+            <div class="text-[46px] md:text-[54px] font-bold tracking-tight leading-none"><span id="kpiNetRev">0</span><span class="text-2xl font-semibold ml-1 text-white/80">đ</span></div>
+            <div class="flex flex-col gap-1.5">
+              <span class="glass rounded-full px-3 py-1 text-[11.5px] flex items-center gap-1"><i class="ph ph-trend-up"></i> <span id="kpiProfitChip">+0 đ LN gộp</span></span>
+              <span class="glass rounded-full px-3 py-1 text-[11.5px]" id="kpiMarginChip">Biên LN 0% · Tăng trưởng 0%</span>
+            </div>
+          </div>
+          <div class="mt-4 relative">
+            <svg id="heroChart" viewBox="0 0 640 170" class="w-full h-[170px]" preserveAspectRatio="none"></svg>
+          </div>
+          <div class="mt-3 pt-4 border-t border-white/20 grid grid-cols-3 gap-4">
+            <div><div class="text-[12px] text-white/70">Tổng giá vốn</div><div class="text-[19px] font-bold mt-0.5" id="kpiTotalCost">0</div></div>
+            <div><div class="text-[12px] text-white/70">Chiết khấu đã trừ</div><div class="text-[19px] font-bold mt-0.5" id="kpiDiscount">0</div></div>
+            <div><div class="text-[12px] text-white/70">Đơn hợp lệ</div><div class="text-[19px] font-bold mt-0.5" id="kpiOrders">0</div></div>
+          </div>
+        </div>
+
+        <div class="xl:col-span-4 bg-card rounded-4xl p-5 fade-up d1">
+          <div class="flex items-center justify-between">
+            <h3 class="text-[15px] font-semibold">Phát hiện bất thường & Chi nhánh</h3>
+            <span class="w-6 h-6 rounded-full bg-soft text-[11px] font-semibold flex items-center justify-center" id="riskCount">0</span>
+          </div>
+          <div class="mt-4 space-y-2.5" id="storeRiskList"></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+        <!-- Top products bars -->
+        <div class="bg-card rounded-4xl p-5 fade-up d2">
+          <div class="text-[13px] text-muted">Hiệu quả sản phẩm</div>
+          <div class="text-[24px] font-bold tracking-tight mt-1" id="topProdValue">0 đ</div>
+          <div class="mt-4 h-[140px] flex items-end justify-around gap-2.5" id="prodBars"></div>
+          <div class="text-[11.5px] text-muted mt-3 truncate" id="prodNote">—</div>
+        </div>
+
+        <!-- Store health -->
+        <div class="bg-card rounded-4xl p-5 fade-up d3">
+          <div class="text-[13px] text-muted">Hiệu quả chi nhánh</div>
+          <div class="text-[24px] font-bold tracking-tight mt-1"><span id="healthOk">0</span> / <span id="healthTotal">0</span> <span class="text-[12px] font-normal text-muted">ổn định</span></div>
+          <div class="mt-4 flex gap-1.5 h-2.5" id="healthBar"></div>
+          <div class="mt-4 divide-y divide-black/5" id="healthList"></div>
+        </div>
+
+        <!-- Pricing & Discount Analysis -->
+        <div class="bg-card rounded-4xl p-5 fade-up d3">
+          <div class="text-[13px] text-muted">Giá bán & Chiết khấu</div>
+          <div class="text-[24px] font-bold tracking-tight mt-1"><span id="pricingAvgDisc">0</span>% <span class="text-[12px] font-normal text-muted">CK bình quân</span></div>
+          <div class="mt-4 space-y-2.5 text-[12.5px]">
+            <div class="flex justify-between py-1.5 border-b border-black/5"><span class="text-muted">Giá trị đơn TB</span><b id="pricingAov">0 đ</b></div>
+            <div class="flex justify-between py-1.5 border-b border-black/5"><span class="text-muted">Đơn có chiết khấu</span><b id="pricingDiscOrders">0</b></div>
+            <div class="flex justify-between py-1.5"><span class="text-muted">CK cao nhất 1 đơn</span><b class="text-amberx" id="pricingMaxDisc">0%</b></div>
+          </div>
+        </div>
+
+        <!-- Return rate -->
+        <div class="bg-card rounded-4xl p-5 fade-up d4">
+          <div class="text-[13px] text-muted">Tỷ lệ hoàn trả</div>
+          <div class="text-[24px] font-bold tracking-tight mt-1"><span id="kpiReturnRate">0</span>%</div>
+          <div class="mt-4 flex items-center gap-4">
+            <svg viewBox="0 0 120 120" class="w-24 h-24 -rotate-90">
+              <circle cx="60" cy="60" r="48" fill="none" stroke="#F1F1EE" stroke-width="14"/>
+              <circle id="returnRing" cx="60" cy="60" r="48" fill="none" stroke="#141414" stroke-width="14" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="301.6" style="transition: stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)"/>
+            </svg>
+            <div class="space-y-1.5 text-[12px]">
+              <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-ink"></span> Đơn hoàn: <b id="kpiReturnCount">0</b></div>
+              <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-soft border border-black/10"></span> Tổng đơn: <b id="kpiTotalOrders">0</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Khuyến nghị hỗ trợ ra quyết định -->
+      <div class="bg-card rounded-4xl p-5 fade-up d4">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="text-[15px] font-semibold">Insight & Khuyến nghị hỗ trợ ra quyết định</h3>
+            <p class="text-[12px] text-muted">Phân loại theo 5 nhóm nghiệp vụ dựa trên số liệu thực tế</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="step3Recommendations"></div>
+      </div>
+
+      <!-- Copilot -->
+      <div class="bg-card rounded-4xl p-5 fade-up d4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl hero-olive text-white flex items-center justify-center"><i class="ph-fill ph-sparkle text-lg"></i></div>
+          <div>
+            <h3 class="text-[15px] font-semibold">Hỏi AI Data Analyst</h3>
+            <p class="text-[12px] text-muted">Truy vấn trực tiếp dữ liệu đã làm sạch bằng tiếng Việt.</p>
+          </div>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button onclick="askQuestion('Chi nhánh nào đang có rủi ro biên lợi nhuận thấp?')" class="bg-soft hover:bg-ink hover:text-white rounded-full px-3.5 py-1.5 text-[12px] transition">Chi nhánh nào rủi ro?</button>
+          <button onclick="askQuestion('Sản phẩm nào mang lại doanh thu cao nhất?')" class="bg-soft hover:bg-ink hover:text-white rounded-full px-3.5 py-1.5 text-[12px] transition">Sản phẩm dẫn đầu?</button>
+          <button onclick="askQuestion('Phân tích giá bán và chiết khấu hiện tại?')" class="bg-soft hover:bg-ink hover:text-white rounded-full px-3.5 py-1.5 text-[12px] transition">Giá bán & chiết khấu?</button>
+          <button onclick="askQuestion('Tốc độ tăng trưởng doanh thu theo thời gian thế nào?')" class="bg-soft hover:bg-ink hover:text-white rounded-full px-3.5 py-1.5 text-[12px] transition">Tăng trưởng theo thời gian?</button>
+        </div>
+        <div id="chatThread" class="mt-4 space-y-3 max-h-[260px] overflow-y-auto scroll-thin"></div>
+        <div class="mt-3 flex gap-2">
+          <input id="analystQueryInput" onkeydown="if(event.key==='Enter') submitAnalystQuery()" class="flex-1 bg-soft focus:bg-white rounded-full px-5 py-3 text-[13px] outline-none focus:ring-2 focus:ring-ink/10 transition" placeholder="Nhập câu hỏi phân tích dữ liệu…">
+          <button onclick="submitAnalystQuery()" class="w-12 h-12 rounded-full bg-ink text-white flex items-center justify-center hover:bg-neutral-800 transition"><i class="ph ph-paper-plane-tilt text-lg"></i></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =============== STEP 4: XUẤT KẾT QUẢ =============== -->
+    <section id="view4" class="view mt-6 space-y-5 hidden">
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <div class="xl:col-span-8 hero-olive rounded-4xl p-6 text-white fade-up">
+          <span class="text-[13px] text-white/80">Bước 4 · Báo cáo điều hành tổng hợp</span>
+          <div class="mt-3 text-[20px] md:text-[24px] font-semibold leading-snug tracking-tight" id="execSummary">Đang tổng hợp…</div>
+          <div class="mt-6 pt-5 border-t border-white/20 grid grid-cols-3 gap-4">
+            <div><div class="text-[12px] text-white/70">Doanh thu thuần</div><div class="text-[19px] font-bold mt-0.5" id="exNet">0</div></div>
+            <div><div class="text-[12px] text-white/70">Lợi nhuận gộp</div><div class="text-[19px] font-bold mt-0.5" id="exProfit">0</div></div>
+            <div><div class="text-[12px] text-white/70">Biên lợi nhuận</div><div class="text-[19px] font-bold mt-0.5" id="exMargin">0%</div></div>
+          </div>
+        </div>
+        <div class="xl:col-span-4 bg-card rounded-4xl p-5 fade-up d1">
+          <h3 class="text-[15px] font-semibold">Khuyến nghị điều hành</h3>
+          <div class="mt-3 divide-y divide-black/5 max-h-[260px] overflow-y-auto scroll-thin" id="finalRecommendationsList"></div>
+        </div>
+      </div>
+
+      <div class="bg-card rounded-4xl p-5 fade-up d2 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-[16px] font-bold">Sản phẩm đầu ra BI chuyên nghiệp</h3>
+            <p class="text-[12px] text-muted">Tự động đồng bộ từ dữ liệu đã làm sạch và kết quả phân tích thực tế</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="exportBuildStatusBadge" class="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-soft text-muted">Chưa đủ dữ liệu</span>
+            <button onclick="generateAndVerifyExports()" class="bg-ink text-white hover:bg-neutral-800 rounded-full px-4 py-2 text-[12px] font-medium flex items-center gap-1.5 transition">
+              <i class="ph ph-arrows-clockwise"></i> Tạo / Cập nhật báo cáo
+            </button>
+          </div>
+        </div>
+
+        <!-- 2 Sản phẩm chính: Excel BI Workbook & Word BI Report -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+          <!-- 1. EXCEL BI WORKBOOK -->
+          <div class="lift bg-soft rounded-3xl p-5 flex flex-col justify-between space-y-4">
+            <div class="flex items-start gap-4">
+              <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#C9D79E] to-olive-500 flex items-center justify-center text-white flex-shrink-0">
+                <i class="ph-bold ph-file-xls text-3xl"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-olive-700">EXCEL BI WORKBOOK (.XLSX)</div>
+                <h4 class="text-[16px] font-bold mt-0.5">Bộ dữ liệu và Dashboard BI</h4>
+                <p class="text-[12px] text-neutral-600 mt-1 leading-relaxed">Dữ liệu đã làm sạch, hệ thống phân tích, các chỉ số KPI và Dashboard trực quan.</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5 text-[12px] bg-white rounded-2xl p-3.5">
+              <div><span class="text-muted block text-[11px]">Số bản ghi sạch</span><b id="exExcelRows">0 bản ghi</b></div>
+              <div><span class="text-muted block text-[11px]">Số Sheet</span><b>6 Sheets chuẩn BI</b></div>
+              <div><span class="text-muted block text-[11px]">Cập nhật dữ liệu</span><b id="exExcelTime">—</b></div>
+              <div><span class="text-muted block text-[11px]">Trạng thái</span><b id="exExcelState" class="text-olive-700">Chưa sẵn sàng</b></div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <button onclick="previewExport('excel')" class="flex-1 bg-white hover:bg-neutral-200 text-ink rounded-full py-2.5 px-4 text-[12.5px] font-semibold flex items-center justify-center gap-1.5 transition">
+                <i class="ph ph-eye"></i> Xem trước
+              </button>
+              <button onclick="exportCleanExcel()" class="flex-1 bg-ink hover:bg-neutral-800 text-white rounded-full py-2.5 px-4 text-[12.5px] font-semibold flex items-center justify-center gap-1.5 transition">
+                <i class="ph ph-download-simple"></i> Tải Excel (.xlsx)
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. WORD BI REPORT -->
+          <div class="lift bg-soft rounded-3xl p-5 flex flex-col justify-between space-y-4">
+            <div class="flex items-start gap-4">
+              <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-neutral-700 to-ink flex items-center justify-center text-white flex-shrink-0">
+                <i class="ph-bold ph-file-doc text-3xl"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-olive-700">WORD BI REPORT (.DOCX)</div>
+                <h4 class="text-[16px] font-bold mt-0.5">Báo cáo phân tích BI</h4>
+                <p class="text-[12px] text-neutral-600 mt-1 leading-relaxed">Báo cáo quản trị hoàn chỉnh gồm tổng quan điều hành, đánh giá dữ liệu, phân tích kinh doanh, Insight và giải pháp đề xuất.</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5 text-[12px] bg-white rounded-2xl p-3.5">
+              <div><span class="text-muted block text-[11px]">Số phần báo cáo</span><b>11 phần chuẩn quản trị</b></div>
+              <div><span class="text-muted block text-[11px]">Thời gian tạo</span><b id="exWordTime">—</b></div>
+              <div><span class="text-muted block text-[11px]">Trạng thái</span><b id="exWordState" class="text-olive-700">Chưa sẵn sàng</b></div>
+              <div class="min-w-0"><span class="text-muted block text-[11px]">Bộ dữ liệu</span><b id="exWordSource" class="block truncate">—</b></div>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <button onclick="previewExport('word')" class="flex-1 bg-white hover:bg-neutral-200 text-ink rounded-full py-2.5 px-4 text-[12.5px] font-semibold flex items-center justify-center gap-1.5 transition">
+                <i class="ph ph-eye"></i> Xem trước báo cáo
+              </button>
+              <button onclick="exportWordReport()" class="flex-1 bg-ink hover:bg-neutral-800 text-white rounded-full py-2.5 px-4 text-[12.5px] font-semibold flex items-center justify-center gap-1.5 transition">
+                <i class="ph ph-download-simple"></i> Tải Word (.docx)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div id="exportPreviewPanel" class="hidden bg-soft rounded-3xl p-5 space-y-3 fade-up">
+          <div class="flex items-center justify-between">
+            <h4 class="text-[14px] font-bold" id="exportPreviewTitle">Xem trước sản phẩm BI</h4>
+            <button onclick="document.getElementById('exportPreviewPanel').classList.add('hidden')" class="w-8 h-8 rounded-full bg-white flex items-center justify-center hover:bg-ink hover:text-white transition"><i class="ph ph-x"></i></button>
+          </div>
+          <div id="exportPreviewBody" class="text-[12.5px] space-y-2.5"></div>
+        </div>
+
+        <!-- Định dạng bổ sung (CSV / PDF / JSON) -->
+        <div class="pt-3 border-t border-black/5 flex flex-wrap items-center justify-between gap-2">
+          <span class="text-[12px] text-muted">Định dạng xuất bổ sung (<span id="exRows">0 dòng</span>):</span>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="exportCleanCSV()" class="bg-soft hover:bg-ink hover:text-white rounded-full px-3.5 py-1.5 text-[11.5px] font-medium transition">CSV (.csv)</button>
+            <button onclick="exportPDF()" class="bg-soft hover:bg-ink hover:text-white rounded-full px-3.5 py-1.5 text-[11.5px] font-medium transition">In / Lưu PDF</button>
+            <button onclick="downloadJsonSummary()" class="bg-soft hover:bg-ink hover:text-white rounded-full px-3.5 py-1.5 text-[11.5px] font-medium transition">Tóm tắt JSON (.json)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toastWrap" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
+
+<script>
+let currentStep = 0;
+let status = {};
+let analysis = null;
+let lastCleanResult = null;
+let replaceTargetFileId = null;
+
+const fmt = n => Math.round(n || 0).toLocaleString('vi-VN');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const short = n => { const a = Math.abs(n); if (a >= 1e9) return (n/1e9).toFixed(2)+' tỷ'; if (a >= 1e6) return (n/1e6).toFixed(1)+' tr'; return fmt(n); };
+
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  const icon = type === 'error' ? 'ph-warning-circle text-redx' : type === 'success' ? 'ph-check-circle text-olive-300' : 'ph-info text-neutral-400';
+  el.className = 'toast bg-ink text-white rounded-2xl pl-4 pr-5 py-3 text-[12.5px] shadow-xl flex items-center gap-2.5 max-w-sm';
+  el.innerHTML = `<i class="ph-fill ${icon} text-lg"></i><span>${esc(msg)}</span>`;
+  document.getElementById('toastWrap').appendChild(el);
+  setTimeout(() => { el.style.transition = 'all .3s'; el.style.opacity = 0; el.style.transform = 'translateY(8px)'; setTimeout(() => el.remove(), 300); }, 3200);
+}
+
+function countUp(id, target, opts = {}) {
+  const el = document.getElementById(id); if (!el) return;
+  const dur = opts.duration || 850, start = performance.now(), from = 0;
+  const f = opts.format || fmt;
+  function tick(t) {
+    const p = Math.min(1, (t - start) / dur), e = 1 - Math.pow(1 - p, 3);
+    el.textContent = f(from + (target - from) * e) + (opts.suffix || '');
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function replayAnim(view) {
+  if (!view) return;
+  view.querySelectorAll('.fade-up').forEach(el => { el.style.animation = 'none'; el.offsetHeight; el.style.animation = ''; });
+}
+
+function setGreeting() {
+  const h = new Date().getHours();
+  const g = h < 11 ? 'Chào buổi sáng' : h < 14 ? 'Chào buổi trưa' : h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
+  document.getElementById('greeting').textContent = `${g}, Chuyên viên phân tích`;
+  updateHeaderStatus();
+}
+
+function updateHeaderStatus() {
+  const d = new Date();
+  const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+  const dateStr = `${days[d.getDay()]}, ${d.getDate()} tháng ${d.getMonth()+1}, ${d.getFullYear()}`;
+  let stText = 'Hệ thống sẵn sàng · Chờ tải dữ liệu';
+  if (status.step2_verified) stText = `Đang xử lý: ${status.step1_source} · Đã duyệt (${status.step2_count} bản ghi sạch)`;
+  else if (status.step2_cleaned) stText = `Đang xử lý: ${status.step1_source} · Chờ kiểm duyệt (${status.step2_count} bản ghi)`;
+  else if (status.step1_connected) stText = `Đã kết nối: ${status.step1_source} (${status.step1_count} bản ghi thô)`;
+  document.getElementById('subGreeting').textContent = `${dateStr} · ${stText}`;
+}
+
+// ---------- Navigation ----------
+async function goToStep(step) {
+  if (step === 3 && !status.step2_cleaned) { toast('Cần hoàn tất Bước 2 · Làm sạch dữ liệu trước khi phân tích.', 'error'); step = 2; }
+  if (step === 4 && !status.step2_cleaned) { toast('Chưa có dữ liệu sạch để xuất kết quả.', 'error'); step = 2; }
+  currentStep = step;
+  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+  document.getElementById('view' + step).classList.remove('hidden');
+  document.querySelectorAll('.rail-btn[data-step]').forEach(b => b.classList.toggle('active', +b.dataset.step === step));
+  document.querySelectorAll('.side-item').forEach(b => b.classList.toggle('active', +b.dataset.step === step));
+  replayAnim(document.getElementById('view' + step));
+  document.querySelector('main').scrollTo({ top: 0, behavior: 'smooth' });
+  updateSideCard();
+  if (step === 0) await refreshHomeDashboard();
+  if (step === 1) await fetchRawPreview();
+  if (step === 3) await fetchDashboardAnalysis();
+  if (step === 4) await fetchExport();
+}
+function nextStep() { goToStep(currentStep >= 4 ? 0 : currentStep + 1); }
+
+function updateSideCard() {
+  const map = {
+    0: ['Trang chủ BI', 'Tổng quan kết quả phân tích, khuyến nghị và xuất báo cáo từ dữ liệu thực tế.', 0],
+    1: ['Bước 1 · Kết nối', 'Tải lên tệp Excel hoặc CSV, kiểm tra cấu trúc cột đầu vào.', 25],
+    2: ['Bước 2 · Làm sạch', 'Xử lý trùng lặp, đơn hủy, ngoại lệ và phê duyệt dữ liệu sạch.', 50],
+    3: ['Bước 3 · Phân tích', 'Theo dõi doanh thu, lợi nhuận, chi nhánh, sản phẩm và tăng trưởng.', 75],
+    4: ['Bước 4 · Xuất kết quả', 'Tổng hợp báo cáo điều hành và xuất CSV, Excel, PDF, JSON.', 100]
+  };
+  document.getElementById('sideCardTitle').textContent = map[currentStep][0];
+  document.getElementById('sideCardText').textContent = map[currentStep][1];
+  const pct = status.step2_verified ? Math.max(map[currentStep][2], 75) : status.step2_cleaned ? Math.max(map[currentStep][2], 50) : status.step1_connected ? Math.max(map[currentStep][2], 25) : map[currentStep][2];
+  document.getElementById('sideProgress').style.width = pct + '%';
+}
+
+async function loadStatus() {
+  try {
+    status = await (await fetch('/api/status')).json();
+    document.querySelector('[data-check="1"]').classList.toggle('hidden', !status.step1_connected);
+    document.querySelector('[data-check="2"]').classList.toggle('hidden', !status.step2_verified);
+    document.querySelector('[data-check="3"]').classList.toggle('hidden', !status.step3_evaluated);
+
+    document.getElementById('sideSource').textContent = status.step1_source || 'Chưa có tệp';
+    document.getElementById('sideSourceMeta').textContent = status.step1_connected
+      ? `${status.step1_fileCount} tệp · ${status.step1_count} bản ghi`
+      : 'Chờ tải dữ liệu';
+    document.getElementById('btnResetSide').classList.toggle('hidden', !status.step1_connected);
+
+    const vPill = document.getElementById('gateVerifyPill');
+    vPill.textContent = status.step2_verified ? 'Đã duyệt' : 'Chờ duyệt';
+    vPill.className = 'px-2 py-0.5 rounded-full text-[11px] font-medium ' + (status.step2_verified ? 'bg-[#EEF2E3] text-olive-700' : 'bg-soft text-muted');
+
+    const ePill = document.getElementById('gateEvalPill');
+    ePill.textContent = status.step3_evaluated ? 'Đã đánh giá' : 'Chờ đánh giá';
+    ePill.className = 'px-2 py-0.5 rounded-full text-[11px] font-medium ' + (status.step3_evaluated ? 'bg-[#EEF2E3] text-olive-700' : 'bg-soft text-muted');
+
+    updateHeaderStatus();
+  } catch (e) { console.error(e); }
+}
+
+// ---------- HOME (INTRO ONLY) ----------
+async function refreshHomeDashboard() {
+  // Trang chủ chỉ hiển thị giới thiệu về Ngọc Linh Data Studio
+}
+
+// ---------- STEP 1: KẾT NỐI DỮ LIỆU ----------
+const statusPill = s => {
+  const m = { COMPLETED: ['bg-[#EEF2E3] text-olive-700', 'Hoàn tất'], CANCELLED: ['bg-red-50 text-redx', 'Đã huỷ'], FAILED: ['bg-red-50 text-redx', 'Lỗi POS'], RETURNED: ['bg-amber-50 text-amberx', 'Hoàn trả'] };
+  const [c, t] = m[s] || ['bg-soft text-muted', s];
+  return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium ${c}"><span class="w-1.5 h-1.5 rounded-full bg-current"></span>${esc(t)}</span>`;
+};
+
+function triggerAddFile(replaceId = null) {
+  replaceTargetFileId = replaceId;
+  document.getElementById('fileInput').click();
+}
+
+async function fetchRawPreview() {
+  const data = await (await fetch('/api/connect/preview')).json();
+  renderRawOverview(data.summary, data.records, data.files);
+}
+
+function renderRawOverview(s, records, files) {
+  countUp('heroRawValue', s.estimatedRawGrossValue);
+  countUp('chipFiles', s.fileCount || 0, { duration: 500 });
+  countUp('chipRecords', s.totalRecords, { duration: 600 });
+  countUp('chipStores', s.uniqueStores, { duration: 600 });
+  countUp('chipSkus', s.uniqueSkus, { duration: 600 });
+  countUp('heroDup', s.duplicateGroups, { duration: 700 });
+  countUp('heroCancel', s.cancelledOrders, { duration: 700 });
+  countUp('heroMissing', s.missingOrInvalid || 0, { duration: 700 });
+
+  const totalAlerts = (s.duplicateGroups || 0) + (s.cancelledOrders || 0) + (s.missingOrInvalid || 0);
+  document.getElementById('bellBadge').textContent = totalAlerts;
+  document.getElementById('railBadge').textContent = totalAlerts;
+  document.getElementById('bellBadge').classList.toggle('hidden', !totalAlerts);
+  document.getElementById('railBadge').classList.toggle('hidden', !totalAlerts);
+
+  const fileListEl = document.getElementById('uploadedFileList');
+  if (!files || !files.length) {
+    fileListEl.innerHTML = `
+      <div class="text-center py-8">
+        <div class="w-12 h-12 mx-auto rounded-2xl bg-soft flex items-center justify-center"><i class="ph ph-tray text-2xl text-muted"></i></div>
+        <div class="text-[13px] font-semibold mt-3">Chưa có tệp nào được tải lên</div>
+        <p class="text-[12px] text-muted mt-1 px-4">Hỗ trợ tệp .xlsx, .xls, .csv hoặc .json. Bạn có thể tải nhiều tệp cùng lúc.</p>
+      </div>`;
+  } else {
+    fileListEl.innerHTML = files.map(f => {
+      const ok = !f.missingColumns || f.missingColumns.length === 0;
+      return `
+        <div class="bg-soft rounded-2xl p-3 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0"><i class="ph ph-file-xls text-xl text-olive-700"></i></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[13px] font-semibold truncate">${esc(f.fileName)}</div>
+            <div class="text-[11px] text-muted">${f.recordCount} bản ghi · ${f.columnCount} cột · <span class="${ok ? 'text-olive-700' : 'text-amberx'} font-medium">${esc(f.status)}</span></div>
+          </div>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <button onclick="triggerAddFile('${esc(f.id)}')" class="w-8 h-8 rounded-full bg-white hover:bg-ink hover:text-white flex items-center justify-center transition" title="Thay thế tệp"><i class="ph ph-arrows-left-right text-sm"></i></button>
+            <button onclick="removeFile('${esc(f.id)}')" class="w-8 h-8 rounded-full bg-white hover:bg-redx hover:text-white flex items-center justify-center transition" title="Xóa tệp"><i class="ph ph-trash text-sm"></i></button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  document.getElementById('rawTableBody').innerHTML = (records || []).map(r => `
+    <tr class="border-b border-black/[.04] hover:bg-soft/70 transition">
+      <td class="py-2.5 pr-3 font-medium">${esc(r.orderCode)}</td>
+      <td class="py-2.5 pr-3 text-neutral-600">${esc(r.storeName)}</td>
+      <td class="py-2.5 pr-3">${esc(r.productName)} <span class="text-muted text-[11px]">${esc(r.sku)}</span></td>
+      <td class="py-2.5 pr-3 text-center">${r.quantity}</td>
+      <td class="py-2.5 pr-3 text-right tabular-nums">${fmt(r.unitPrice)}</td>
+      <td class="py-2.5 pr-3 text-right tabular-nums text-muted">${fmt(r.discountAmount)}</td>
+      <td class="py-2.5 pr-3">${statusPill(r.status)}</td>
+      <td class="py-2.5 text-neutral-600">${esc(r.channel)}</td>
+    </tr>`).join('') || `<tr><td colspan="8" class="py-14 text-center">
+        <i class="ph ph-table text-3xl text-neutral-300"></i>
+        <div class="text-[13px] font-medium mt-2">Bảng đang trống</div>
+        <div class="text-[12px] text-muted mt-1">Dữ liệu sẽ hiển thị tại đây sau khi bạn tải tệp lên.</div>
+      </td></tr>`;
+}
+
+async function removeFile(id) {
+  const res = await fetch(`/api/connect/files/${id}`, { method: 'DELETE' });
+  const r = await res.json();
+  if (!res.ok) return toast(r.message || 'Không thể xóa tệp', 'error');
+  resetDownstream();
+  renderRawOverview(r.summary, r.preview, r.files);
+  await loadStatus();
+  toast(r.message, 'success');
+}
+
+async function uploadFile(file) {
+  if (!file) return;
+  const name = file.name.toLowerCase();
+  const dz = document.getElementById('dropZone');
+  if (dz) dz.classList.add('dz-active');
+
+  try {
+    let res, r;
+    if ((name.endsWith('.xlsx') || name.endsWith('.xls')) && window.XLSX && window.DataLens) {
+      const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+      const parsed = DataLens.rowsToRecords(rows);
+      const records = parsed.records.map(x => ({
+        orderCode: x.orderCode,
+        orderDate: x.orderDate ? x.orderDate.toISOString() : new Date().toISOString(),
+        customerName: x.customerName,
+        storeId: x.storeName,
+        storeName: x.storeName,
+        sku: x.sku,
+        productName: x.productName,
+        quantity: Math.round(x.quantity),
+        unitPrice: x.unitPrice,
+        discountAmount: x.discountAmount,
+        unitCost: x.unitCost,
+        status: x.status,
+        channel: x.channel
+      }));
+      res = await fetch('/api/connect/upload-json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, replaceFileId: replaceTargetFileId, headers: parsed.headers, records })
+      });
+      r = await res.json();
+    } else {
+      const fd = new FormData();
+      fd.append('file', file);
+      if (replaceTargetFileId) fd.append('replaceFileId', replaceTargetFileId);
+      res = await fetch('/api/connect/upload-file', { method: 'POST', body: fd });
+      r = await res.json();
+    }
+
+    if (!res.ok) return toast(r.message || 'Không đọc được tệp', 'error');
+    toast(r.message, 'success');
+    resetDownstream();
+    await loadStatus();
+    renderRawOverview(r.summary, r.preview, r.files);
+    if (currentStep === 0) goToStep(1);
+  } catch (e) { toast('Lỗi tải tệp: ' + e.message, 'error'); }
+  finally {
+    replaceTargetFileId = null;
+    if (dz) dz.classList.remove('dz-active');
+    document.getElementById('fileInput').value = '';
+  }
+}
+function handleFileUpload(e) { uploadFile(e.target.files[0]); }
+
+async function resetAll() {
+  if (!confirm('Xoá toàn bộ dữ liệu của phiên làm việc hiện tại?')) return;
+  await fetch('/api/reset', { method: 'POST' });
+  resetDownstream();
+  document.getElementById('chatThread').innerHTML = '';
+  await loadStatus();
+  await fetchRawPreview();
+  await refreshHomeDashboard();
+  toast('Đã xoá dữ liệu. Sẵn sàng nhận tệp mới.', 'success');
+  goToStep(0);
+}
+
+function resetDownstream() {
+  analysis = null;
+  lastCleanResult = null;
+  document.getElementById('cleanedTableBody').innerHTML = `<tr><td colspan="6" class="py-10 text-center text-muted">Bấm <b>“Chạy làm sạch dữ liệu”</b> để bắt đầu.</td></tr>`;
+  document.getElementById('exceptionsTableBody').innerHTML = `<tr><td colspan="8" class="py-8 text-center text-muted">Chưa có dữ liệu ngoại lệ.</td></tr>`;
+  document.getElementById('cleanLogsTerminal').innerHTML = `<div class="text-neutral-500">// Đang chờ lệnh làm sạch…</div>`;
+  ['cleanPrevented','cleanRawN','cleanCleanN','cleanDup','cleanCancel','cleanReturn','cleanMissing','cleanedCountBadge','exceptionCountBadge'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = '0';
+  });
+  document.getElementById('btnApprove').disabled = true;
+  setGate('idle');
+}
+
+// Drag & drop
+['dragenter','dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); const dz = document.getElementById('dropZone'); if (dz) dz.classList.add('dz-active'); }));
+['dragleave','drop'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); if (ev === 'drop' || e.target === document.documentElement) { const dz = document.getElementById('dropZone'); if (dz) dz.classList.remove('dz-active'); } }));
+document.addEventListener('drop', e => { const f = e.dataTransfer?.files?.[0]; if (f) uploadFile(f); });
+
+// ---------- STEP 2: LÀM SẠCH DỮ LIỆU ----------
+function setGate(state) {
+  const el = document.getElementById('gateStatus');
+  const items = document.querySelectorAll('#gateChecklist > div');
+  const mark = (n) => items.forEach((it, i) => {
+    const done = i < n;
+    it.className = 'flex items-center gap-2 transition ' + (done ? 'text-ink' : 'text-muted');
+    it.querySelector('i').className = done ? 'ph-fill ph-check-circle text-olive-500' : 'ph ph-circle';
+  });
+  if (state === 'idle') { el.textContent = 'Chờ làm sạch'; el.className = 'text-[11px] font-medium px-2.5 py-1 rounded-full bg-soft text-muted'; mark(0); }
+  if (state === 'pending') { el.textContent = 'Chờ phê duyệt'; el.className = 'text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amberx'; mark(2); }
+  if (state === 'approved') { el.textContent = 'Đã phê duyệt'; el.className = 'text-[11px] font-medium px-2.5 py-1 rounded-full bg-[#EEF2E3] text-olive-700'; mark(3); }
+  if (state === 'rejected') { el.textContent = 'Yêu cầu xử lý lại'; el.className = 'text-[11px] font-medium px-2.5 py-1 rounded-full bg-red-50 text-redx'; mark(1); }
+}
+
+async function executeDataCleaning() {
+  const btn = document.getElementById('btnStartClean');
+  btn.disabled = true; btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin"></i> Đang xử lý…`;
+  document.getElementById('cleanedTableBody').innerHTML = Array(5).fill(`<tr><td colspan="6" class="py-1.5"><div class="shimmer h-7 rounded-lg"></div></td></tr>`).join('');
+  const cfg = {
+    removeDuplicates: chkDeduplicate.checked,
+    excludeCancelled: chkCancelled.checked,
+    deductReturns: chkReturns.checked,
+    normalizeFormat: chkNormalize.checked,
+    imputeMissingCogs: chkImputeCogs.checked
+  };
+  try {
+    const res = await fetch('/api/clean/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
+    const r = await res.json();
+    if (!res.ok) { toast(r.message, 'error'); document.getElementById('cleanedTableBody').innerHTML = `<tr><td colspan="6" class="py-10 text-center text-muted">Chưa có dữ liệu đầu vào.</td></tr>`; return; }
+    await new Promise(ok => setTimeout(ok, 350));
+    applyCleanResult(r);
+    toast('Đã làm sạch dữ liệu. Kiểm tra ngoại lệ và phê duyệt.', 'success');
+    await loadStatus();
+  } catch (e) { toast('Lỗi: ' + e, 'error'); }
+  finally { btn.disabled = false; btn.innerHTML = `<i class="ph-bold ph-sparkle"></i> Chạy lại`; }
+}
+
+function applyCleanResult(r) {
+  lastCleanResult = r;
+  countUp('cleanPrevented', r.preventedOvercountValue);
+  countUp('cleanRawN', r.rawCount, { duration: 600 });
+  countUp('cleanCleanN', r.cleanedCount, { duration: 600 });
+  countUp('cleanDup', r.duplicatesRemoved, { duration: 600 });
+  countUp('cleanCancel', r.cancelledExcluded, { duration: 600 });
+  countUp('cleanReturn', r.returnsAdjusted, { duration: 600 });
+  countUp('cleanMissing', r.missingOrInvalid || 0, { duration: 600 });
+  document.getElementById('cleanedCountBadge').textContent = r.cleanedCount;
+  document.getElementById('exceptionCountBadge').textContent = (r.exceptions || []).length;
+  document.getElementById('cleanRatio').textContent = `Tỷ lệ giữ lại ${(r.cleanedCount / Math.max(1, r.rawCount) * 100).toFixed(0)}%`;
+  renderCleanedTable(r.sampleCleaned || []);
+  renderExceptionsTable(r.exceptions || []);
+  streamLogs(r.logs || []);
+  document.getElementById('btnApprove').disabled = r.cleanedCount === 0;
+  setGate(r.cleanedCount > 0 ? 'pending' : 'idle');
+}
+
+function renderExceptionsTable(items) {
+  const tbody = document.getElementById('exceptionsTableBody');
+  if (!items.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-olive-700 font-medium text-[12.5px]">Không phát hiện bản ghi ngoại lệ nào.</td></tr>`;
+    return;
+  }
+  const typeTag = t => {
+    const m = {
+      DUPLICATE: ['bg-amber-50 text-amberx', 'Trùng lặp'],
+      CANCELLED: ['bg-red-50 text-redx', 'Đơn hủy'],
+      RETURNED: ['bg-amber-50 text-amberx', 'Hoàn trả'],
+      MISSING_OR_INVALID: ['bg-red-50 text-redx', 'Thiếu / Sai ĐD']
+    };
+    const [c, lbl] = m[t] || ['bg-soft text-muted', t];
+    return `<span class="px-2 py-0.5 rounded-full text-[11px] font-medium ${c}">${lbl}</span>`;
+  };
+  tbody.innerHTML = items.map(ex => {
+    const r = ex.record;
+    return `<tr class="border-b border-black/[.04] hover:bg-soft/50" data-raw-idx="${ex.rawIndex}">
+      <td class="py-2 pr-3">${typeTag(ex.exceptionType)}</td>
+      <td class="py-2 pr-3"><input class="w-24 bg-soft rounded-lg px-2 py-1 text-[12px] font-medium" value="${esc(r.orderCode)}" data-f="orderCode"></td>
+      <td class="py-2 pr-3"><input class="w-36 bg-soft rounded-lg px-2 py-1 text-[12px]" value="${esc(r.productName)}" data-f="productName"></td>
+      <td class="py-2 pr-3 text-center"><input type="number" class="w-14 bg-soft rounded-lg px-2 py-1 text-[12px] text-center" value="${r.quantity}" data-f="quantity"></td>
+      <td class="py-2 pr-3 text-right"><input type="number" class="w-24 bg-soft rounded-lg px-2 py-1 text-[12px] text-right" value="${r.unitPrice}" data-f="unitPrice"></td>
+      <td class="py-2 pr-3">
+        <select class="bg-soft rounded-lg px-2 py-1 text-[12px]" data-f="status">
+          <option value="COMPLETED" ${r.status==='COMPLETED'?'selected':''}>Hoàn tất</option>
+          <option value="CANCELLED" ${r.status==='CANCELLED'?'selected':''}>Đã huỷ</option>
+          <option value="FAILED" ${r.status==='FAILED'?'selected':''}>Lỗi POS</option>
+          <option value="RETURNED" ${r.status==='RETURNED'?'selected':''}>Hoàn trả</option>
+        </select>
+      </td>
+      <td class="py-2 pr-3 text-[11.5px] text-muted">${esc(ex.reason)}</td>
+      <td class="py-2 text-right whitespace-nowrap">
+        <button onclick="saveExceptionRow(${ex.rawIndex}, this)" class="bg-ink text-white rounded-full px-2.5 py-1 text-[11px] font-medium hover:bg-neutral-800 transition">Lưu</button>
+        <button onclick="deleteExceptionRow(${ex.rawIndex})" class="ml-1 bg-soft hover:bg-redx hover:text-white rounded-full px-2.5 py-1 text-[11px] transition">Xoá</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function saveExceptionRow(rawIdx, btn) {
+  const tr = btn.closest('tr');
+  const existing = (lastCleanResult?.exceptions || []).find(x => x.rawIndex === rawIdx)?.record || {};
+  const payload = Object.assign({}, existing, {
+    orderCode: tr.querySelector('[data-f="orderCode"]').value.trim(),
+    productName: tr.querySelector('[data-f="productName"]').value.trim(),
+    quantity: parseInt(tr.querySelector('[data-f="quantity"]').value) || 0,
+    unitPrice: parseFloat(tr.querySelector('[data-f="unitPrice"]').value) || 0,
+    status: tr.querySelector('[data-f="status"]').value
+  });
+  const res = await fetch(`/api/clean/raw-record/${rawIdx}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  const r = await res.json();
+  if (!res.ok) return toast(r.message, 'error');
+  applyCleanResult(r.cleanResult);
+  await loadStatus();
+  toast(r.message, 'success');
+}
+
+async function deleteExceptionRow(rawIdx) {
+  const res = await fetch(`/api/clean/raw-record/${rawIdx}`, { method: 'DELETE' });
+  const r = await res.json();
+  if (!res.ok) return toast(r.message, 'error');
+  applyCleanResult(r.cleanResult);
+  await loadStatus();
+  toast(r.message, 'success');
+}
+
+function renderCleanedTable(items) {
+  document.getElementById('cleanedTableBody').innerHTML = items.map((r, i) => {
+    const neg = r.netRevenue < 0;
+    return `<tr class="border-b border-black/[.04] hover:bg-soft/70 transition fade-up" style="animation-delay:${i * 20}ms">
+      <td class="py-2.5 pr-3 font-medium">${esc(r.orderCode)}</td>
+      <td class="py-2.5 pr-3">${esc(r.productName)}<div class="text-[11px] text-muted">${esc(r.storeName)}</div></td>
+      <td class="py-2.5 pr-3 text-right tabular-nums ${neg ? 'text-redx' : ''}">${fmt(r.netRevenue)}</td>
+      <td class="py-2.5 pr-3 text-right tabular-nums text-muted">${fmt(r.totalCost)}</td>
+      <td class="py-2.5 pr-3 text-right tabular-nums font-semibold ${neg ? 'text-redx' : 'text-olive-700'}">${fmt(r.grossProfit)}</td>
+      <td class="py-2.5"><span class="px-2.5 py-0.5 rounded-full text-[11px] ${neg ? 'bg-amber-50 text-amberx' : 'bg-soft text-neutral-600'}">${esc(r.cleanRemark)}</span></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" class="py-10 text-center text-muted">Không có bản ghi sạch nào.</td></tr>`;
+}
+
+function streamLogs(logs) {
+  const term = document.getElementById('cleanLogsTerminal');
+  term.innerHTML = '';
+  document.getElementById('cleanLogTime').textContent = new Date().toLocaleTimeString('vi-VN');
+  logs.forEach((l, i) => setTimeout(() => {
+    const d = document.createElement('div');
+    let c = 'text-neutral-400';
+    if (/DEDUPLICATE|EXCLUDE|NGOẠI LỆ/.test(l)) c = 'text-[#E8C27A]';
+    else if (/RETURN/.test(l)) c = 'text-[#F09A8A]';
+    else if (/COMPLETE|STATISTICS/.test(l)) c = 'text-[#C9D79E] font-semibold';
+    else if (/COGS/.test(l)) c = 'text-sky-300';
+    d.className = c + ' toast';
+    d.textContent = '› ' + l;
+    term.appendChild(d); term.scrollTop = term.scrollHeight;
+  }, i * 110));
+}
+
+async function verifyCleaning(approved) {
+  const res = await fetch('/api/clean/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approved }) });
+  const r = await res.json();
+  if (!res.ok) return toast(r.message, 'error');
+  await loadStatus();
+  if (approved) { setGate('approved'); toast('Đã phê duyệt dữ liệu sạch. Mở khoá Bước 3.', 'success'); setTimeout(() => goToStep(3), 450); }
+  else { setGate('rejected'); toast('Đã từ chối. Vui lòng chỉnh sửa ngoại lệ hoặc chạy lại.', 'error'); }
+}
+
+// ---------- STEP 3: PHÂN TÍCH DỮ LIỆU ----------
+async function fetchDashboardAnalysis() {
+  const res = await fetch('/api/analyze/dashboard');
+  if (!res.ok) { toast('Vui lòng làm sạch dữ liệu trước.', 'error'); return goToStep(2); }
+  analysis = await res.json();
+  renderDashboard(analysis);
+}
+
+async function evaluateAnalysis(approved) {
+  const res = await fetch('/api/analyze/evaluate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approved }) });
+  const r = await res.json();
+  if (!res.ok) return toast(r.message, 'error');
+  await loadStatus();
+  toast(r.message, 'success');
+}
+
+function renderDashboard(d) {
+  const m = d.overallMetrics;
+  const p = d.pricingAnalysis || {};
+  countUp('kpiNetRev', m.totalNetRevenue, { duration: 1000 });
+  document.getElementById('kpiProfitChip').textContent = `+${short(m.totalGrossProfit)} LN gộp`;
+  document.getElementById('kpiMarginChip').textContent = `Biên LN ${m.grossMarginPercent}% · Tăng trưởng ${d.growthRatePercent >= 0 ? '+' : ''}${d.growthRatePercent}%`;
+  countUp('kpiTotalCost', m.totalCost, { format: short });
+  countUp('kpiDiscount', m.totalDiscountAmount, { format: short });
+  countUp('kpiOrders', m.totalOrders, { duration: 700 });
+  countUp('kpiReturnRate', m.returnRatePercent, { format: v => v.toFixed(1), duration: 900 });
+  document.getElementById('kpiReturnCount').textContent = m.returnOrders;
+  document.getElementById('kpiTotalOrders').textContent = m.totalOrders;
+  setTimeout(() => document.getElementById('returnRing').style.strokeDashoffset = 301.6 * (1 - Math.min(100, m.returnRatePercent) / 100), 100);
+
+  // Pricing & Discount card
+  document.getElementById('pricingAvgDisc').textContent = p.averageDiscountRate ?? 0;
+  document.getElementById('pricingAov').textContent = fmt(p.averageOrderValue) + ' đ';
+  document.getElementById('pricingDiscOrders').textContent = p.discountedOrderCount ?? 0;
+  document.getElementById('pricingMaxDisc').textContent = (p.maxDiscountPercent ?? 0) + '%';
+
+  drawHeroChart(d.timeSeries && d.timeSeries.length ? d.timeSeries : d.storePerformance.map(s => ({ label: s.storeName, netRevenue: s.netRevenue })));
+
+  // Risk list
+  const risky = d.storePerformance.filter(s => s.statusAssessment !== 'Vận hành tốt').concat(d.storePerformance.filter(s => s.statusAssessment === 'Vận hành tốt').sort((a,b)=>a.marginPercent-b.marginPercent)).slice(0, 3);
+  const riskN = d.storePerformance.filter(s => s.statusAssessment !== 'Vận hành tốt').length;
+  document.getElementById('riskCount').textContent = riskN;
+  document.getElementById('storeRiskList').innerHTML = risky.map((s, k) => {
+    const bad = s.statusAssessment !== 'Vận hành tốt';
+    return `<button onclick="askQuestion('Chi nhánh ${esc(s.storeName)} đang có hiệu quả thế nào?')" class="lift w-full bg-soft rounded-2xl p-3 flex items-center gap-3 text-left fade-up d${k+1}">
+      <div class="w-12 h-12 rounded-xl ${bad ? 'bg-ink text-white' : 'bg-white'} flex items-center justify-center flex-shrink-0"><i class="ph ph-storefront text-xl"></i></div>
+      <div class="flex-1 min-w-0">
+        <div class="text-[11px] font-medium ${bad ? 'text-redx' : 'text-olive-700'}">${esc(s.statusAssessment)}</div>
+        <div class="text-[13px] font-semibold truncate">${esc(s.storeName)}</div>
+        <div class="text-[11.5px] text-muted">Biên LN ${s.marginPercent}% · Hoàn ${s.returnRatePercent}%</div>
+      </div>
+      <span class="w-8 h-8 rounded-full ${k === 0 && bad ? 'bg-ink text-white' : 'bg-white'} flex items-center justify-center flex-shrink-0"><i class="ph ph-arrow-up-right"></i></span>
+    </button>`;
+  }).join('');
+
+  // Product bars
+  const prods = d.productPerformance.slice(0, 4);
+  const maxP = Math.max(...prods.map(p => p.netRevenue), 1);
+  document.getElementById('topProdValue').textContent = prods[0] ? fmt(prods[0].netRevenue) + ' đ' : '0 đ';
+  document.getElementById('prodNote').textContent = prods[0] ? `Dẫn đầu: ${prods[0].productName} (${prods[0].quantitySold} SP)` : '—';
+  document.getElementById('prodBars').innerHTML = prods.map((p, i) => {
+    const h = Math.max(10, (Math.max(0, p.netRevenue) / maxP) * 100);
+    const top = i === 0;
+    return `<div class="flex-1 flex flex-col items-center justify-end h-full group">
+      <div class="text-[10px] font-semibold mb-1.5 ${top ? '' : 'text-muted'}">${short(p.netRevenue)}</div>
+      <div class="w-full max-w-[44px] rounded-xl bar-grow ${top ? 'bg-ink' : 'bg-soft group-hover:bg-neutral-300'} transition-colors" style="height:${h}%;animation-delay:${i*90}ms"></div>
+      <div class="text-[10px] text-muted mt-1.5 truncate max-w-[58px]" title="${esc(p.productName)}">${esc(p.sku !== 'N/A' ? p.sku : p.productName)}</div>
+    </div>`;
+  }).join('');
+
+  // Health
+  const stores = d.storePerformance;
+  const ok = stores.filter(s => s.statusAssessment === 'Vận hành tốt').length;
+  document.getElementById('healthOk').textContent = ok;
+  document.getElementById('healthTotal').textContent = stores.length;
+  const col = s => s.statusAssessment === 'Vận hành tốt' ? 'bg-ink' : s.statusAssessment.includes('đổi trả') ? 'bg-amberx' : 'bg-redx';
+  document.getElementById('healthBar').innerHTML = stores.map((s, i) => `<div class="flex-1 rounded-full seg-grow ${col(s)}" style="animation-delay:${i*80}ms" title="${esc(s.storeName)}"></div>`).join('');
+  const watch = stores.filter(s => s.statusAssessment !== 'Vận hành tốt');
+  document.getElementById('healthList').innerHTML = (watch.length ? watch : stores.slice(0, 2)).slice(0, 3).map(s => `
+    <button onclick="askQuestion('Chi nhánh ${esc(s.storeName)} đang có hiệu quả thế nào?')" class="w-full py-2 flex items-center gap-3 text-left hover:bg-soft/60 rounded-lg px-1 transition">
+      <span class="w-2 h-2 rounded-full ${col(s)}"></span>
+      <div class="flex-1 min-w-0"><div class="text-[12.5px] font-semibold truncate">${esc(s.storeName)}</div><div class="text-[11px] text-muted">${esc(s.statusAssessment)}</div></div>
+      <i class="ph ph-caret-right text-muted"></i>
+    </button>`).join('');
+
+  // Structured recommendations in step 3
+  const recs = d.structuredRecommendations || [];
+  document.getElementById('step3Recommendations').innerHTML = recs.map(r => {
+    const pCls = r.priority === 'Cao' ? 'bg-red-50 text-redx' : r.priority === 'Trung bình' ? 'bg-amber-50 text-amberx' : 'bg-[#EEF2E3] text-olive-700';
+    return `
+      <div class="bg-soft rounded-2xl p-4">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] font-semibold uppercase text-olive-700">${esc(r.category)}</span>
+          <span class="px-2 py-0.5 rounded-full text-[10.5px] font-semibold ${pCls}">Ưu tiên: ${esc(r.priority)}</span>
+        </div>
+        <div class="text-[13.5px] font-semibold mt-1">${esc(r.title)}</div>
+        <div class="text-[12px] text-neutral-600 mt-1 leading-relaxed">${esc(r.content)}</div>
+      </div>`;
+  }).join('');
+}
+
+function drawHeroChart(series) {
+  const svg = document.getElementById('heroChart');
+  const W = 640, H = 170, pl = 44, pr = 30, pt = 22, pb = 26;
+  if (!series || !series.length) { svg.innerHTML = ''; return; }
+  const pts = series.length === 1 ? [0, series[0].netRevenue] : series.map(s => s.netRevenue);
+  const labels = series.length === 1
+    ? ['Trước đó', series[0].label || 'Hiện tại']
+    : series.map(s => (s.label || '').length > 12 ? s.label.slice(0, 11) + '…' : s.label);
+  const max = Math.max(...pts, 1), min = Math.min(0, ...pts);
+  const x = i => pl + i * (W - pl - pr) / Math.max(1, pts.length - 1);
+  const y = v => pt + (1 - (v - min) / Math.max(1, max - min)) * (H - pt - pb);
+  let path = `M ${x(0)} ${y(pts[0])}`;
+  for (let i = 1; i < pts.length; i++) { const cx = (x(i - 1) + x(i)) / 2; path += ` C ${cx} ${y(pts[i-1])}, ${cx} ${y(pts[i])}, ${x(i)} ${y(pts[i])}`; }
+  const area = path + ` L ${x(pts.length-1)} ${H-pb} L ${x(0)} ${H-pb} Z`;
+  const grid = [0, .5, 1].map(f => { const v = min + (max - min) * f; return `<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(255,255,255,.25)" stroke-dasharray="3 4"/><text x="0" y="${y(v)+4}" fill="rgba(255,255,255,.75)" font-size="10">${short(v)}</text>`; }).join('');
+  const vlines = pts.map((_, i) => `<line x1="${x(i)}" x2="${x(i)}" y1="${pt}" y2="${H-pb}" stroke="rgba(255,255,255,.18)" stroke-dasharray="2 4"/>`).join('');
+  const dots = pts.map((v, i) => i === pts.length - 1 ? '' : `<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="#fff" stroke="rgba(0,0,0,.25)" style="opacity:0;animation:fadeUp .4s ${0.3 + i*0.15}s forwards"><title>${labels[i]}: ${fmt(v)} đ</title></circle>`).join('');
+  const xl = labels.map((l, i) => `<text x="${x(i)}" y="${H-6}" fill="rgba(255,255,255,.8)" font-size="10" text-anchor="middle">${esc(l)}</text>`).join('');
+  const lx = x(pts.length - 1), ly = y(pts[pts.length - 1]);
+  svg.innerHTML = `
+    <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+    ${grid}${vlines}
+    <path d="${area}" fill="url(#ag)" style="opacity:0;animation:fadeUp .8s .5s forwards"/>
+    <path d="${path}" fill="none" stroke="#fff" stroke-width="2.2" class="draw"/>
+    ${dots}${xl}
+    <g style="opacity:0;animation:fadeUp .5s 1.2s forwards">
+      <rect x="${Math.max(pl, lx-110)}" y="${Math.max(2, ly-30)}" width="98" height="22" rx="11" fill="#fff"/>
+      <text x="${Math.max(pl+49, lx-61)}" y="${Math.max(17, ly-15)}" font-size="10.5" font-weight="600" text-anchor="middle" fill="#141414">${short(pts[pts.length-1])} đ</text>
+      <circle cx="${lx}" cy="${ly}" r="10" fill="#F5D46A" opacity=".35"><animate attributeName="r" values="8;14;8" dur="2s" repeatCount="indefinite"/></circle>
+      <circle cx="${lx}" cy="${ly}" r="6" fill="#F5D46A" stroke="#141414" stroke-width="2"/>
+    </g>`;
+}
+
+function askQuestion(q) { if (currentStep !== 3) goToStep(3); document.getElementById('analystQueryInput').value = q; submitAnalystQuery(); }
+
+async function submitAnalystQuery() {
+  const inp = document.getElementById('analystQueryInput');
+  const q = inp.value.trim(); if (!q) return;
+  inp.value = '';
+  const thread = document.getElementById('chatThread');
+  thread.insertAdjacentHTML('beforeend', `<div class="flex justify-end toast"><div class="bg-ink text-white rounded-2xl rounded-br-md px-4 py-2.5 text-[13px] max-w-[80%]">${esc(q)}</div></div>`);
+  const id = 'a' + Date.now();
+  thread.insertAdjacentHTML('beforeend', `<div class="flex gap-2.5 toast" id="${id}"><div class="w-8 h-8 rounded-xl hero-olive text-white flex items-center justify-center flex-shrink-0"><i class="ph-fill ph-sparkle"></i></div><div class="bg-soft rounded-2xl rounded-tl-md px-4 py-3 text-[13px] max-w-[85%]"><span class="inline-flex gap-1"><span class="w-1.5 h-1.5 rounded-full bg-muted animate-bounce"></span><span class="w-1.5 h-1.5 rounded-full bg-muted animate-bounce" style="animation-delay:.15s"></span><span class="w-1.5 h-1.5 rounded-full bg-muted animate-bounce" style="animation-delay:.3s"></span></span></div></div>`);
+  thread.scrollTop = thread.scrollHeight;
+  try {
+    const r = await (await fetch('/api/analyze/ask-copilot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q }) })).json();
+    await new Promise(ok => setTimeout(ok, 350));
+    const box = document.querySelector(`#${id} > div:last-child`);
+    box.textContent = '';
+    let i = 0; const txt = r.answer || r.message;
+    (function type() { box.textContent = txt.slice(0, i += 4); thread.scrollTop = thread.scrollHeight; if (i < txt.length) setTimeout(type, 10); })();
+  } catch (e) { document.querySelector(`#${id} > div:last-child`).textContent = 'Lỗi: ' + e; }
+}
+
+// ---------- STEP 4 & EXPORT ----------
+let exportPreviewData = null;
+
+function setExportStatus(label, cls = 'bg-soft text-muted') {
+  const b = document.getElementById('exportBuildStatusBadge');
+  if (!b) return;
+  b.textContent = label;
+  b.className = `px-3.5 py-1.5 rounded-full text-[12px] font-medium ${cls}`;
+}
+
+async function fetchExport() {
+  if (!status.step2_cleaned) {
+    setExportStatus('Chưa đủ dữ liệu', 'bg-red-50 text-redx');
+    return;
+  }
+  await generateAndVerifyExports(true);
+}
+
+async function generateAndVerifyExports(silent = false) {
+  if (!status.step2_cleaned) {
+    setExportStatus('Chưa đủ dữ liệu', 'bg-red-50 text-redx');
+    if (!silent) toast('Chưa đủ dữ liệu sạch. Hãy hoàn tất Bước 1 & Bước 2.', 'error');
+    return;
+  }
+  setExportStatus('Đang xử lý', 'bg-amber-50 text-amberx');
+  try {
+    const res = await fetch('/api/export/preview');
+    if (!res.ok) {
+      setExportStatus('Xuất báo cáo thất bại', 'bg-red-50 text-redx');
+      return;
+    }
+    const pv = await res.json();
+    exportPreviewData = pv;
+    const d = pv.analysis;
+
+    document.getElementById('execSummary').textContent = d.executiveSummary;
+    countUp('exNet', d.overallMetrics.totalNetRevenue, { format: short });
+    countUp('exProfit', d.overallMetrics.totalGrossProfit, { format: short });
+    countUp('exMargin', d.overallMetrics.grossMarginPercent, { format: v => v.toFixed(1), suffix: '%' });
+    document.getElementById('exRows').textContent = `${status.step2_count || 0} dòng`;
+
+    document.getElementById('exExcelRows').textContent = `${pv.excel.cleanRecords} bản ghi`;
+    document.getElementById('exExcelTime').textContent = pv.generatedAt;
+    document.getElementById('exExcelState').textContent = pv.isVerified ? 'Sẵn sàng xuất (Đã duyệt)' : 'Sẵn sàng (Chưa duyệt)';
+
+    document.getElementById('exWordTime').textContent = pv.generatedAt;
+    document.getElementById('exWordState').textContent = pv.isVerified ? 'Hoàn thành' : 'Chờ duyệt bước 2';
+    document.getElementById('exWordSource').textContent = pv.sourceName || 'Dữ liệu khách hàng';
+
+    const recs = d.structuredRecommendations || [];
+    document.getElementById('finalRecommendationsList').innerHTML = recs.map((r, i) => `
+      <div class="py-3 flex gap-3 fade-up d${Math.min(4, i+1)}">
+        <div class="text-center w-9 flex-shrink-0"><div class="text-[16px] font-bold leading-none">${String(i+1).padStart(2,'0')}</div><div class="text-[10px] text-muted mt-1">${esc(r.priority)}</div></div>
+        <div><div class="text-[10.5px] font-semibold text-amberx tracking-wide">${esc(r.category)}</div><div class="text-[12.5px] font-medium leading-relaxed mt-0.5">${esc(r.title)}</div></div>
+      </div>`).join('');
+
+    setExportStatus('Hoàn thành', 'bg-[#EEF2E3] text-olive-700');
+    if (!silent) toast('Đã tổng hợp xong Bộ dữ liệu Excel BI và Báo cáo Word BI.', 'success');
+  } catch (e) {
+    setExportStatus('Xuất báo cáo thất bại', 'bg-red-50 text-redx');
+    if (!silent) toast('Lỗi tổng hợp báo cáo: ' + e.message, 'error');
+  }
+}
+
+async function previewExport(kind) {
+  if (!status.step2_cleaned) return toast('Chưa có dữ liệu sạch để xem trước.', 'error');
+  if (!exportPreviewData) await generateAndVerifyExports(true);
+  if (!exportPreviewData) return;
+
+  const panel = document.getElementById('exportPreviewPanel');
+  const title = document.getElementById('exportPreviewTitle');
+  const body = document.getElementById('exportPreviewBody');
+  panel.classList.remove('hidden');
+
+  if (kind === 'excel') {
+    title.textContent = `Xem trước Excel BI Workbook · ${exportPreviewData.excel.fileName}`;
+    body.innerHTML = `
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+        ${exportPreviewData.excel.sheets.map((s, i) => `
+          <div class="bg-white rounded-2xl p-3 flex items-start gap-3">
+            <span class="w-7 h-7 rounded-full bg-soft text-[11px] font-bold flex items-center justify-center flex-shrink-0">${i+1}</span>
+            <div><div class="font-semibold text-[12.5px]">${esc(s.name)}</div><div class="text-[11.5px] text-muted">${esc(s.desc)}</div></div>
+          </div>`).join('')}
+      </div>`;
+  } else {
+    title.textContent = `Xem trước Báo cáo Word BI · ${exportPreviewData.word.fileName}`;
+    body.innerHTML = `
+      <div class="bg-white rounded-2xl p-4 space-y-2">
+        <div class="font-bold text-[13px] text-olive-700">Cấu trúc ${exportPreviewData.word.sectionCount} phần (Khổ A4 · Times New Roman 13pt · Mục lục tự động · 3 biểu đồ):</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-1.5 text-[12px]">
+          ${exportPreviewData.word.sections.map(s => `<div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-olive-500"></i><span>${esc(s)}</span></div>`).join('')}
+        </div>
+      </div>`;
+  }
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function downloadTemplateCSV() {
+  const res = await fetch('/api/connect/template');
+  const blob = await res.blob();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'NgocLinhDataStudio_Template.csv'; a.click();
+}
+
+async function exportCleanCSV() {
+  if (!status.step2_cleaned) return toast('Chưa có dữ liệu sạch. Hãy hoàn tất Bước 1 & Bước 2.', 'error');
+  const res = await fetch('/api/export/csv');
+  const blob = await res.blob();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `NgocLinhDataStudio_CleanedData_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  toast('Đang tải tệp dữ liệu sạch (.csv)…', 'success');
+}
+
+async function exportCleanExcel() {
+  if (!status.step2_cleaned) return toast('Chưa có dữ liệu sạch. Hãy hoàn tất Bước 1 & Bước 2.', 'error');
+  setExportStatus('Đang tạo Excel', 'bg-amber-50 text-amberx');
+  try {
+    const res = await fetch('/api/export/excel');
+    if (!res.ok) throw new Error('Không thể tạo tệp Excel.');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Ngoc_Linh_Data_Studio_BI_Workbook.xlsx';
+    a.click();
+    setExportStatus('Hoàn thành', 'bg-[#EEF2E3] text-olive-700');
+    toast('Đã tải Excel BI Workbook (.xlsx) với 6 Sheets & Dashboard!', 'success');
+  } catch (e) {
+    setExportStatus('Xuất báo cáo thất bại', 'bg-red-50 text-redx');
+    toast('Lỗi tạo Excel: ' + e.message, 'error');
+  }
+}
+
+async function exportWordReport() {
+  if (!status.step2_cleaned) return toast('Chưa có dữ liệu sạch. Hãy hoàn tất Bước 1 & Bước 2.', 'error');
+  setExportStatus('Đang tạo Word', 'bg-amber-50 text-amberx');
+  try {
+    const res = await fetch('/api/export/word');
+    if (!res.ok) throw new Error('Không thể tạo báo cáo Word.');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Ngoc_Linh_Data_Studio_BI_Report.docx';
+    a.click();
+    setExportStatus('Hoàn thành', 'bg-[#EEF2E3] text-olive-700');
+    toast('Đã tải Báo cáo phân tích BI (.docx) hoàn chỉnh!', 'success');
+  } catch (e) {
+    setExportStatus('Xuất báo cáo thất bại', 'bg-red-50 text-redx');
+    toast('Lỗi tạo Word: ' + e.message, 'error');
+  }
+}
+
+function exportPDF() {
+  if (!status.step2_cleaned) return toast('Chưa có dữ liệu sạch để xuất báo cáo PDF.', 'error');
+  window.print();
+}
+
+async function downloadJsonSummary() {
+  if (!status.step2_cleaned) return toast('Chưa có dữ liệu sạch để xuất JSON.', 'error');
+  const d = await (await fetch('/api/export/summary-report')).json();
+  const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `NgocLinhDataStudio_BaoCao_${new Date().toISOString().slice(0,10)}.json`; a.click();
+  toast('Đã tải bản tóm tắt JSON.', 'success');
+}
+
+// ---------- Search ----------
+function filterTables(q) {
+  q = q.trim().toLowerCase();
+  document.querySelectorAll('tbody.searchable tr').forEach(tr => { tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+}
+
+// ---------- Init ----------
+window.addEventListener('load', async () => {
+  setGreeting();
+  await loadStatus();
+  await refreshHomeDashboard();
+  updateSideCard();
+  if (status.step2_cleaned) setGate(status.step2_verified ? 'approved' : 'pending');
+  const stepParam = new URLSearchParams(location.search).get('step');
+  if (stepParam !== null && ['0','1','2','3','4'].includes(stepParam)) {
+    await goToStep(+stepParam);
+  }
+});
+</script>
+</body>
+</html>
